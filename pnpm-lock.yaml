@@ -19,7 +19,7 @@ importers:
         version: 15.4.5(react-dom@19.1.0(react@19.1.0))(react@19.1.0)
       openai:
         specifier: ^5.11.0
-        version: 5.11.0(zod@3.25.76)
+        version: 5.11.0(zod@4.0.14)
       react:
         specifier: 19.1.0
         version: 19.1.0
@@ -29,6 +29,9 @@ importers:
       three:
         specifier: ^0.179.1
         version: 0.179.1
+      zod:
+        specifier: ^4.0.14
+        version: 4.0.14
       zustand:
         specifier: ^5.0.7
         version: 5.0.7(@types/react@19.1.9)(react@19.1.0)(use-sync-external-store@1.5.0(react@19.1.0))
@@ -2562,6 +2565,9 @@ packages:
   zod@3.25.76:
     resolution: {integrity: sha512-gzUt/qt81nXsFGKIFcC3YnfEAx5NkunCfnDlvuBSSFS02bcXu4Lmea0AFIUwbLWxWPx3d9p8S5QoaujKcNQxcQ==}
 
+  zod@4.0.14:
+    resolution: {integrity: sha512-nGFJTnJN6cM2v9kXL+SOBq3AtjQby3Mv5ySGFof5UGRHrRioSJ5iG680cYNjE/yWk671nROcpPj4hAS8nyLhSw==}
+
   zustand@4.5.7:
     resolution: {integrity: sha512-CHOUy7mu3lbD6o6LJLfllpjkzhHXSBlX8B9+qPddUsIfeF5S/UZ5q0kmCsnRqT1UHFQZchNFDDzMbQsuesHWlw==}
     engines: {node: '>=12.7.0'}
@@ -4518,9 +4524,9 @@ snapshots:
       define-properties: 1.2.1
       es-object-atoms: 1.1.1
 
-  openai@5.11.0(zod@3.25.76):
+  openai@5.11.0(zod@4.0.14):
     optionalDependencies:
-      zod: 3.25.76
+      zod: 4.0.14
 
   optionator@0.9.4:
     dependencies:
@@ -5218,6 +5224,8 @@ snapshots:
   yocto-queue@0.1.0: {}
 
   zod@3.25.76: {}
+
+  zod@4.0.14: {}
 
   zustand@4.5.7(@types/react@19.1.9)(react@19.1.0):
     dependencies:

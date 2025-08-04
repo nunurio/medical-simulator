@@ -1,11 +1,15 @@
-import { defineConfig } from 'vitest/config'
-import { VitestReporter } from 'tdd-guard-vitest'
+import { defineConfig } from 'vitest/config';
+import path from 'path';
 
 export default defineConfig({
   test: {
-    reporters: [
-      'default',
-      new VitestReporter('/Users/username/projects/my-app'),
-    ],
+    globals: true,
+    environment: 'node',
+    reporters: ['default'],
   },
-})
+  resolve: {
+    alias: {
+      '@': path.resolve(__dirname, './src'),
+    },
+  },
+});

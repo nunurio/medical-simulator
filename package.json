@@ -6,7 +6,9 @@
     "dev": "next dev --turbopack",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "test": "vitest",
+    "test:watch": "vitest --watch"
   },
   "dependencies": {
     "@react-three/drei": "^10.6.1",
@@ -16,6 +18,7 @@
     "react": "19.1.0",
     "react-dom": "19.1.0",
     "three": "^0.179.1",
+    "zod": "^4.0.14",
     "zustand": "^5.0.7"
   },
   "devDependencies": {

@@ -1,7 +1,5 @@
 # CLAUDE.md
 
-**CRITICAL: This is the most important rule.** For any request that is not a simple error fix (e.g., implementing a new feature, refactoring, etc.), you **MUST** launch the `task-planner-medical-simulator` sub-agent as the absolute first step. Do not perform *any* other action—including analysis or file reading—before this sub-agent is invoked.
-
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
 ## Communication Style
@@ -63,9 +61,26 @@ Note: `vitest.config.ts` has a hardcoded path that needs updating for your envir
 - TypeScript target is ES2017 with strict mode
 - No medical-specific functionality implemented yet - this is a fresh Next.js installation
 
+### Next.js Best Practices
+
+- **RSC (React Server Components) First**: Default to RSC. Use `'use client'` only when necessary (hooks, event handlers).
+- **Server Actions for Mutations**: Use Server Actions for form submissions and data mutations. Avoid API Routes.
+- **Data Fetching**:
+    - **Server**: Use `fetch` within RSCs, controlling cache with `next: { revalidate: ... }`.
+    - **Client**: Use SWR (`useSWR`) for client-side data fetching.
+- **UI States**: Utilize special files for UI states:
+    - `loading.tsx` for loading UI.
+    - `error.tsx` for error boundaries.
+    - `not-found.tsx` for 404 pages.
+- **Performance Optimization**:
+    - **Images**: Always use `<Image>` from `next/image`.
+    - **Fonts**: Optimize fonts with `next/font`.
+    - **Dynamic Imports**: Use `dynamic` from `next/dynamic`, not `React.lazy`.
+- **`useEffect` Usage**: Avoid `useEffect` for data fetching. Limit its use to client-side specific logic (like DOM manipulation) and encapsulate it within custom hooks.
 ## TDD (Test-Driven Development)
 
 This project follows the TDD approach, inspired by the methodology of Takuto Wada (@t-wada), using the "Red-Green-Refactor" cycle. This ensures we build a robust and maintainable codebase.
 - **Red**: Write a failing test that specifies the desired behavior.
 - **Green**: Write the simplest code to make the test pass.
 - **Refactor**: Clean up and improve the code while ensuring tests remain green.
+
