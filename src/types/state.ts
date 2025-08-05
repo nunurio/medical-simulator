@@ -8,6 +8,15 @@ import type { PatientPersona, VitalSigns } from './patient';
 import type { ChatMessage, ChatConversation } from './chat';
 import type { MedicalOrder, OrderStatus } from './medical-orders';
 
+// Re-export necessary types for external use
+export type { PatientPersona, VitalSigns } from './patient';
+export type { ChatMessage, ChatConversation } from './chat';
+export type { MedicalOrder, OrderStatus } from './medical-orders';
+export type { PatientId, EncounterId, OrderId, ISODateTime } from './core';
+
+// Alias for compatibility with existing code
+export type Patient = PatientPersona;
+
 // Simulation types
 export type SimulationMode = 'outpatient' | 'emergency' | 'inpatient';
 export type DifficultyLevel = 'beginner' | 'intermediate' | 'advanced';
@@ -33,11 +42,15 @@ export interface PatientStore {
   // State
   patients: Record<PatientId, PatientPersona>;
   activePatientId: PatientId | null;
-  loadingPatientId: PatientId | null;
+  loading: boolean;
   error: string | null;
   
   // Actions
-  setActivePatient: (id: PatientId) => void;
+  setPatients: (patients: Record<PatientId, PatientPersona>) => void;
+  addPatient: (patient: PatientPersona) => void;
+  updatePatient: (id: PatientId, updates: Partial<PatientPersona>) => void;
+  removePatient: (id: PatientId) => void;
+  setActivePatient: (id: PatientId | null) => void;
   loadPatient: (id: PatientId) => Promise<PatientPersona>;
   updatePatientVitals: (id: PatientId, vitals: VitalSigns) => void;
   addPatientSymptom: (id: PatientId, symptom: unknown) => void;

@@ -1,17 +1,47 @@
 import { create } from 'zustand';
 import { immer } from 'zustand/middleware/immer';
-import type { PatientStore, PatientId, PatientPersona, VitalSigns } from '@/types/state';
+import type { PatientStore } from '@/types/state';
+import type { PatientPersona, VitalSigns } from '@/types/patient';
+import type { PatientId } from '@/types/core';
+import { createScenarioId, createISODate, createISODateTime } from '@/types/core';
 import { MedicalValidationService } from '@/types/medical-validation-service';
+import type { InteractionKnowledgeBase, AuditLogger, NotificationService } from '@/types/drug-interaction-service';
 
 export const usePatientStore = create<PatientStore>()(
   immer((set, get) => ({
     // State
     patients: {},
     activePatientId: null,
-    loadingPatientId: null,
+    loading: false,
     error: null,
     
     // Actions
+    setPatients: (patients) => set((state) => {
+      state.patients = patients;
+      state.error = null;
+    }),
+    
+    addPatient: (patient) => set((state) => {
+      state.patients[patient.id] = patient;
+      state.error = null;
+    }),
+    
+    updatePatient: (id, updates) => set((state) => {
+      const patient = state.patients[id];
+      if (patient) {
+        state.patients[id] = { ...patient, ...updates };
+      }
+      state.error = null;
+    }),
+    
+    removePatient: (id) => set((state) => {
+      delete state.patients[id];
+      if (state.activePatientId === id) {
+        state.activePatientId = null;
+      }
+      state.error = null;
+    }),
+    
     setActivePatient: (id) => set((state) => {
       state.activePatientId = id;
       state.error = null;
@@ -19,7 +49,7 @@ export const usePatientStore = create<PatientStore>()(
     
     loadPatient: async (id) => {
       set((state) => {
-        state.loadingPatientId = id;
+        state.loading = true;
         state.error = null;
       });
       
@@ -30,57 +60,70 @@ export const usePatientStore = create<PatientStore>()(
         // モックデータ
         const mockPatient: PatientPersona = {
           id,
-          scenarioId: 'scenario-1' as any,
+          scenarioId: createScenarioId('scenario-1'),
           demographics: {
-            name: 'テスト患者',
-            age: 45,
+            firstName: 'テスト',
+            lastName: '患者',
             gender: 'male',
-            dateOfBirth: '1979-01-01',
-            bloodType: 'A',
+            dateOfBirth: createISODate('1979-01-01'),
+            bloodType: 'A+',
           },
           chiefComplaint: '胸痛',
           presentIllness: '3時間前から胸部圧迫感',
           medicalHistory: {
-            pastIllnesses: [],
-            surgeries: [],
+            surgicalHistory: [],
             familyHistory: [],
+            pastIllnesses: [],
+            hospitalizations: [],
           },
           currentConditions: [],
           medications: [],
           allergies: [],
           vitalSigns: {
-            current: {
+            baseline: {
               bloodPressure: { systolic: 120, diastolic: 80, unit: 'mmHg' },
               heartRate: { value: 72, unit: 'bpm' },
-              temperature: { value: 36.5, unit: '°C' },
-              respiratoryRate: { value: 16, unit: '/min' },
+              temperature: { value: 36.5, unit: 'celsius' },
+              respiratoryRate: { value: 16, unit: 'breaths/min' },
               oxygenSaturation: { value: 98, unit: '%' },
-              timestamp: new Date().toISOString(),
+              recordedAt: createISODateTime(new Date().toISOString()),
             },
-            history: [],
+            trend: 'stable',
+            criticalValues: {
+              isHypotensive: false,
+              isHypertensive: false,
+              isTachycardic: false,
+              isBradycardic: false,
+              isFebrile: false,
+              isHypoxic: false,
+            },
           },
           socialHistory: {
-            smokingStatus: 'never',
-            alcoholUse: 'occasional',
+            smoking: {
+              status: 'never',
+            },
+            alcohol: {
+              status: 'occasional',
+            },
             occupation: 'office worker',
           },
           insurance: {
             provider: 'Health Insurance Co.',
             policyNumber: '123456789',
-            groupNumber: 'GRP001',
+            validUntil: createISODate('2025-12-31'),
           },
         };
         
         set((state) => {
           state.patients[id] = mockPatient;
-          state.loadingPatientId = null;
+          state.loading = false;
         });
         
         return mockPatient;
       } catch (error) {
         set((state) => {
           state.error = error instanceof Error ? error.message : '患者データの読み込みに失敗しました';
-          state.loadingPatientId = null;
+          state.loading = false;
         });
         throw error;
       }
@@ -96,36 +139,31 @@ export const usePatientStore = create<PatientStore>()(
       }
       
       // 医療バリデーション
-      const validationResult = MedicalValidationService.validateVitalSigns(vitals);
+      // TODO: 実際のサービス実装時に適切な依存関係を注入する
+      const medicalValidationService = new MedicalValidationService(
+        {} as InteractionKnowledgeBase,
+        {} as AuditLogger,
+        {} as NotificationService,
+        [] // allergyDrugMappings
+      );
+      const age = new Date().getFullYear() - new Date(patient.demographics.dateOfBirth).getFullYear();
+      const validationResult = medicalValidationService.validateVitalSigns(vitals, age, patient.demographics.gender);
       if (!validationResult.isValid) {
         set((state) => {
-          state.error = validationResult.errors.join(', ');
+          state.error = `異常なバイタルサイン: ${validationResult.errors.map(e => e.message).join(', ')}`;
         });
-        return;
       }
       
       set((state) => {
         const patient = state.patients[id];
         if (patient) {
-          // 履歴に現在の値を追加
-          patient.vitalSigns.history.push({
-            ...patient.vitalSigns.current,
-            timestamp: new Date().toISOString(),
-          });
-          
-          // 新しい値を設定
-          patient.vitalSigns.current = {
-            ...vitals,
-            timestamp: new Date().toISOString(),
-          };
+          // 新しいバイタルサインを設定
+          patient.vitalSigns.baseline = vitals;
         }
         state.error = null;
       });
       
-      // 警告がある場合は通知（エラーとは別処理）
-      if (validationResult.warnings.length > 0) {
-        console.warn('バイタルサイン警告:', validationResult.warnings);
-      }
+      // バリデーション完了
     },
     
     addPatientSymptom: (id, symptom) => {

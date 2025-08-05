@@ -22,10 +22,10 @@ describe('State Management Types', () => {
       const patientStore: Partial<PatientStore> = {
         patients: {},
         activePatientId: null,
-        loadingPatientId: null,
+        loading: false,
         error: null,
         
-        setActivePatient: (id: PatientId) => {},
+        setActivePatient: (id: PatientId | null) => {},
         loadPatient: async (id: PatientId) => ({} as PatientPersona),
         updatePatientVitals: (id: PatientId, vitals: unknown) => {},
         clearPatientError: () => {}

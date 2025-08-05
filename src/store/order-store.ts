@@ -1,6 +1,9 @@
 import { create } from 'zustand';
 import { immer } from 'zustand/middleware/immer';
-import type { OrderStore, MedicalOrder, OrderStatus, PatientId } from '@/types/state';
+import type { OrderStore } from '@/types/state';
+import type { MedicalOrder, OrderStatus } from '@/types/medical-orders';
+import type { PatientId, OrderId } from '@/types/core';
+import { createOrderId } from '@/types/core';
 
 export const useOrderStore = create<OrderStore>()(
   immer((set, get) => ({
@@ -11,9 +14,12 @@ export const useOrderStore = create<OrderStore>()(
     // Actions
     createOrder: (order) => {
       set((state) => {
-        state.orders[order.id] = order;
-        if (order.status === 'pending') {
-          state.pendingOrders.push(order.id);
+        // Generate a new ID with order- prefix
+        const orderId = createOrderId(`order-${crypto.randomUUID()}`);
+        const orderWithId = { ...order, id: orderId };
+        state.orders[orderId] = orderWithId;
+        if (orderWithId.status === 'pending') {
+          state.pendingOrders.push(orderId);
         }
       });
     },

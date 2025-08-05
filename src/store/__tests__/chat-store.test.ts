@@ -10,7 +10,6 @@ describe('ChatStore', () => {
       conversations: {},
       activeConversationId: null,
       isTyping: false,
-      _conversationCounter: 0,
     });
   });
 

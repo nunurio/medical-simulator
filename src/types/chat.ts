@@ -104,6 +104,7 @@ export interface ChatConversation {
   readonly id: string;
   readonly encounterId: EncounterId;
   readonly startedAt: ISODateTime;
+  readonly endedAt: ISODateTime | null;
   readonly lastActivityAt: ISODateTime;
   readonly messages: ChatMessage[];
   readonly status: 'active' | 'paused' | 'completed';

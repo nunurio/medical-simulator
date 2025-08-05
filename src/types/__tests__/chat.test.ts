@@ -188,6 +188,7 @@ describe('Chat Types', () => {
         id: 'conv-001',
         encounterId: createEncounterId('encounter-001'),
         startedAt: createISODateTime('2024-03-15T10:00:00Z'),
+        endedAt: null,
         lastActivityAt: createISODateTime('2024-03-15T10:15:00Z'),
         messages: [],
         status: 'active',

@@ -4,7 +4,7 @@
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { createAppStore } from '../app-store';
-import type { AppState } from '@/types/state';
+import { createPatientId, createEncounterId, createISODateTime } from '@/types/core';
 
 // Mock localStorage
 const localStorageMock = {
@@ -17,15 +17,11 @@ const localStorageMock = {
 };
 
 // Setup global mocks
-if (typeof window !== 'undefined') {
-  Object.defineProperty(window, 'localStorage', {
-    value: localStorageMock,
-    writable: true,
-  });
-} else {
-  // Node.js environment
-  global.localStorage = localStorageMock as any;
-}
+// @ts-expect-error - Mocking window for testing
+global.window = {
+  localStorage: localStorageMock
+};
+global.localStorage = localStorageMock as Storage;
 
 describe('AppStore', () => {
   beforeEach(() => {
@@ -82,7 +78,7 @@ describe('AppStore', () => {
       // PatientStore initial state
       expect(state.patients).toEqual({});
       expect(state.activePatientId).toBeNull();
-      expect(state.loadingPatientId).toBeNull();
+      expect(state.loading).toBe(false);
       expect(state.error).toBeNull();
 
       // ChatStore initial state
@@ -235,15 +231,16 @@ describe('AppStore', () => {
       store.getState().toggleSidebar();
       
       // Patient data (should persist)
-      store.getState().setActivePatient('patient-123');
+      store.getState().setActivePatient(createPatientId('patient-123'));
       
       // Chat data (should partially persist)
-      const conversationId = store.getState().createConversation('encounter-123');
+      const conversationId = store.getState().createConversation(createEncounterId('encounter-123'));
       store.getState().addMessage(conversationId, {
         id: 'msg-1',
-        role: 'user',
+        messageType: 'patient',
         content: 'Test message',
-        timestamp: new Date().toISOString(),
+        timestamp: createISODateTime(new Date().toISOString()),
+        encounterId: createEncounterId('encounter-123'),
       });
       
       // Simulation state (should not persist running state)
@@ -265,11 +262,8 @@ describe('AppStore', () => {
       expect(persistedData.state.isRunning).toBeUndefined();
       expect(persistedData.state.startTime).toBeUndefined();
       
-      // Chat messages should not include PHI
-      expect(persistedData.state.conversations).toBeDefined();
-      const conversation = Object.values(persistedData.state.conversations)[0] as any;
-      expect(conversation.messages).toHaveLength(1);
-      expect(conversation.messages[0].content).not.toBe('Test message'); // Should be sanitized
+      // Conversations should not be persisted (for PHI security)
+      expect(persistedData.state.conversations).toBeUndefined();
     });
 
     it('should restore only persisted fields', () => {

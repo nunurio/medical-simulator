@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { immer } from 'zustand/middleware/immer';
 import { SimulationStore } from '@/types/state';
+import { createISODateTime } from '@/types/core';
 
 export const useSimulationStore = create<SimulationStore>()(
   immer((set, get) => ({
@@ -16,14 +17,14 @@ export const useSimulationStore = create<SimulationStore>()(
     // Actions
     startSimulation: () => set((state) => {
       state.isRunning = true;
-      state.startTime = new Date().toISOString() as any;
+      state.startTime = createISODateTime(new Date().toISOString());
       state.endTime = null;
       state.score = null;
     }),
     
     endSimulation: () => set((state) => {
       state.isRunning = false;
-      state.endTime = new Date().toISOString() as any;
+      state.endTime = createISODateTime(new Date().toISOString());
     }),
     
     setMode: (mode) => set((state) => {

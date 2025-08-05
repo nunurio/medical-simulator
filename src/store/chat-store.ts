@@ -1,6 +1,9 @@
 import { create } from 'zustand';
 import { immer } from 'zustand/middleware/immer';
-import type { ChatStore, ChatConversation, ChatMessage, EncounterId } from '@/types/state';
+import type { ChatStore } from '@/types/state';
+import type { ChatConversation, ChatMessage } from '@/types/chat';
+import type { EncounterId } from '@/types/core';
+import { createISODateTime } from '@/types/core';
 
 export const useChatStore = create<ChatStore>()(
   immer((set) => ({
@@ -11,15 +14,26 @@ export const useChatStore = create<ChatStore>()(
     
     // Actions
     createConversation: (encounterId) => {
-      const conversationId = crypto.randomUUID();
+      const conversationId = `conv-${crypto.randomUUID()}`;
       set((state) => {
         state.conversations[conversationId] = {
           id: conversationId,
           encounterId,
-          startTime: new Date().toISOString() as any,
-          endTime: null,
+          startedAt: createISODateTime(new Date().toISOString()),
+          endedAt: null,
+          lastActivityAt: createISODateTime(new Date().toISOString()),
           messages: [],
-          summary: '',
+          status: 'active',
+          participants: {
+            patient: {
+              role: 'patient',
+              name: 'Patient',
+            },
+            provider: {
+              role: 'provider',
+              name: 'Provider',
+            },
+          },
         };
         state.activeConversationId = conversationId;
       });
@@ -32,8 +46,9 @@ export const useChatStore = create<ChatStore>()(
         if (conversation) {
           conversation.messages.push({
             ...message,
-            timestamp: new Date().toISOString() as any,
+            timestamp: createISODateTime(new Date().toISOString()),
           });
+          conversation.lastActivityAt = createISODateTime(new Date().toISOString());
         }
       });
     },
@@ -49,7 +64,9 @@ export const useChatStore = create<ChatStore>()(
     endConversation: (conversationId) => set((state) => {
       const conversation = state.conversations[conversationId];
       if (conversation) {
-        conversation.endTime = new Date().toISOString() as any;
+        conversation.endedAt = createISODateTime(new Date().toISOString());
+        conversation.status = 'completed';
+        conversation.lastActivityAt = createISODateTime(new Date().toISOString());
       }
       if (state.activeConversationId === conversationId) {
         state.activeConversationId = null;
