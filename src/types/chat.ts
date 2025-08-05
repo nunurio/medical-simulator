@@ -4,6 +4,9 @@
 
 import type { EncounterId, ISODateTime } from './core';
 
+// Re-export necessary types
+export type { EncounterId } from './core';
+
 // Message role types
 export type MessageRole = 'patient' | 'provider' | 'system';
 

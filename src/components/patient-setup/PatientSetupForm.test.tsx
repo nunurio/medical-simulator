@@ -195,4 +195,47 @@ describe('PatientSetupForm', () => {
       })
     })
   })
+
+  it('onSuccessコールバックプロップが提供された場合、成功時に呼び出される', async () => {
+    const user = userEvent.setup()
+    const mockOnSuccess = vi.fn()
+    const mockAddNotification = vi.fn()
+    
+    mockUseUIStore.mockReturnValue({
+      addNotification: mockAddNotification,
+      notifications: [],
+    })
+    
+    render(<PatientSetupForm onSuccess={mockOnSuccess} />)
+    
+    const submitButton = screen.getByRole('button', { name: '患者を生成' })
+    await user.click(submitButton)
+    
+    await waitFor(() => {
+      expect(mockOnSuccess).toHaveBeenCalledTimes(1)
+    })
+  })
+
+  it('onSuccessコールバックが提供されていない場合でも正常に動作する', async () => {
+    const user = userEvent.setup()
+    const mockAddNotification = vi.fn()
+    
+    mockUseUIStore.mockReturnValue({
+      addNotification: mockAddNotification,
+      notifications: [],
+    })
+    
+    render(<PatientSetupForm />)
+    
+    const submitButton = screen.getByRole('button', { name: '患者を生成' })
+    await user.click(submitButton)
+    
+    await waitFor(() => {
+      expect(mockAddNotification).toHaveBeenCalledWith({
+        type: 'success',
+        message: '患者が正常に生成されました',
+        duration: 3000
+      })
+    })
+  })
 })

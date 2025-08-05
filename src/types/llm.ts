@@ -1,6 +1,9 @@
 import { z } from 'zod';
 import { VALIDATION_MESSAGES } from './validation-utils';
 import { LLM_CONSTANTS } from '@/config/constants';
+import type { PatientPersona } from './patient';
+import type { ChatMessage } from './chat';
+import type { EncounterId } from './core';
 
 /**
  * LLMプロンプトタイプ
@@ -65,6 +68,20 @@ export const LLMResponseSchema = z.object({
 });
 
 export type LLMResponse = z.infer<typeof LLMResponseSchema>;
+
+/**
+ * Patient Context for Chat Response Generation
+ * LLMによるチャット応答生成時に使用される患者コンテキスト
+ */
+export interface PatientContext {
+  patient: PatientPersona;
+  conversationHistory: ChatMessage[];
+  encounterId: EncounterId;
+  sessionContext: {
+    currentTime: string;
+    sessionId: string;
+  };
+}
 
 /**
  * LLMエラークラス

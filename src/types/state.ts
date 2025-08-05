@@ -67,6 +67,8 @@ export interface ChatStore {
   
   // Actions
   addMessage: (conversationId: string, message: ChatMessage) => void;
+  sendMessage: (conversationId: string, message: ChatMessage) => void;
+  removeMessage: (conversationId: string, messageId: string) => void;
   setTyping: (isTyping: boolean) => void;
   createConversation: (encounterId: EncounterId) => string;
   endConversation: (conversationId: string) => void;

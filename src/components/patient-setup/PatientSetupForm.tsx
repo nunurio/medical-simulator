@@ -9,7 +9,15 @@ import { LoadingSpinner } from '@/components/ui/LoadingSpinner'
 import { Card } from '@/components/ui/Card'
 import type { MedicalSpecialtyKey, DifficultyLevel } from '@/config/medical-knowledge'
 
-export function PatientSetupForm() {
+export interface PatientSetupFormProps {
+  /**
+   * 患者生成成功時に呼び出されるコールバック関数
+   * 通常はページ遷移やモーダル表示などのUI変更に使用する
+   */
+  onSuccess?: () => void
+}
+
+export function PatientSetupForm({ onSuccess }: PatientSetupFormProps) {
   const { department, difficulty, setDepartment, setDifficulty } = useSimulationStore()
   const { generatePatient, loading, error } = usePatientGeneration()
 
@@ -19,7 +27,7 @@ export function PatientSetupForm() {
     await generatePatient({
       department,
       difficulty
-    })
+    }, onSuccess)
   }
 
   return (

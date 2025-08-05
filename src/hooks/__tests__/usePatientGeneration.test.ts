@@ -300,5 +300,121 @@ describe('usePatientGeneration', () => {
       expect(result.current.loading).toBe(false)
       expect(mockAddPatient).not.toHaveBeenCalled()
     })
+
+    it('成功時にonSuccessコールバックが呼び出される', async () => {
+      const mockOnSuccess = vi.fn()
+      const mockPatientData = {
+        id: 'patient-001',
+        demographics: {
+          name: '田中太郎',
+          age: 45,
+          gender: 'male' as const,
+          dateOfBirth: '1979-01-15' as const
+        },
+        currentConditions: [],
+        vitalSigns: {
+          baseline: {
+            bloodPressure: { systolic: 120, diastolic: 80 },
+            heartRate: 72,
+            temperature: 36.5,
+            respiratoryRate: 16,
+            oxygenSaturation: 98
+          }
+        },
+        medicalHistory: { allergies: [], medications: [], surgeries: [] },
+        socialHistory: { smokingStatus: 'never', alcoholUse: 'none' },
+        familyHistory: []
+      }
+
+      mockGeneratePatientAction.mockResolvedValue({
+        success: true,
+        data: mockPatientData
+      })
+
+      const { result } = renderHook(() => usePatientGeneration())
+
+      await act(async () => {
+        await result.current.generatePatient({
+          department: 'general_medicine',
+          difficulty: 'beginner'
+        }, mockOnSuccess)
+      })
+
+      expect(mockOnSuccess).toHaveBeenCalledTimes(1)
+      expect(mockAddPatient).toHaveBeenCalledWith(mockPatientData)
+      expect(mockAddNotification).toHaveBeenCalledWith({
+        type: 'success',
+        message: '患者が正常に生成されました',
+        duration: 3000
+      })
+    })
+
+    it('失敗時にonSuccessコールバックが呼び出されない', async () => {
+      const mockOnSuccess = vi.fn()
+      const errorMessage = '患者生成に失敗しました'
+      
+      mockGeneratePatientAction.mockResolvedValue({
+        success: false,
+        error: errorMessage
+      })
+
+      const { result } = renderHook(() => usePatientGeneration())
+
+      await act(async () => {
+        await result.current.generatePatient({
+          department: 'cardiology',
+          difficulty: 'intermediate'
+        }, mockOnSuccess)
+      })
+
+      expect(mockOnSuccess).not.toHaveBeenCalled()
+      expect(result.current.error).toBe(errorMessage)
+    })
+
+    it('onSuccessコールバックが未提供でも正常に動作する', async () => {
+      const mockPatientData = {
+        id: 'patient-001',
+        demographics: {
+          name: '田中太郎',
+          age: 45,
+          gender: 'male' as const,
+          dateOfBirth: '1979-01-15' as const
+        },
+        currentConditions: [],
+        vitalSigns: {
+          baseline: {
+            bloodPressure: { systolic: 120, diastolic: 80 },
+            heartRate: 72,
+            temperature: 36.5,
+            respiratoryRate: 16,
+            oxygenSaturation: 98
+          }
+        },
+        medicalHistory: { allergies: [], medications: [], surgeries: [] },
+        socialHistory: { smokingStatus: 'never', alcoholUse: 'none' },
+        familyHistory: []
+      }
+
+      mockGeneratePatientAction.mockResolvedValue({
+        success: true,
+        data: mockPatientData
+      })
+
+      const { result } = renderHook(() => usePatientGeneration())
+
+      await act(async () => {
+        await result.current.generatePatient({
+          department: 'general_medicine',
+          difficulty: 'beginner'
+        })
+      })
+
+      expect(mockAddPatient).toHaveBeenCalledWith(mockPatientData)
+      expect(mockAddNotification).toHaveBeenCalledWith({
+        type: 'success',
+        message: '患者が正常に生成されました',
+        duration: 3000
+      })
+    })
   })
 })

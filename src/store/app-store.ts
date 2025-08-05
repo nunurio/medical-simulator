@@ -118,6 +118,14 @@ export const useAppStore = create<AppState>()(
       useChatStore.getState().addMessage(conversationId, message);
     },
     
+    sendMessage: (conversationId, message) => {
+      useChatStore.getState().sendMessage(conversationId, message);
+    },
+    
+    removeMessage: (conversationId, messageId) => {
+      useChatStore.getState().removeMessage(conversationId, messageId);
+    },
+    
     setTyping: (isTyping) => {
       useChatStore.getState().setTyping(isTyping);
     },
@@ -495,6 +503,25 @@ export const createAppStore = () => {
           if (conversation) {
             conversation.messages.push(message);
             conversation.lastActivityAt = createISODateTime(new Date().toISOString());
+          }
+        });
+      },
+      
+      sendMessage: (conversationId, message) => {
+        set((state) => {
+          const conversation = state.conversations[conversationId];
+          if (conversation) {
+            conversation.messages.push(message);
+            conversation.lastActivityAt = createISODateTime(new Date().toISOString());
+          }
+        });
+      },
+      
+      removeMessage: (conversationId, messageId) => {
+        set((state) => {
+          const conversation = state.conversations[conversationId];
+          if (conversation) {
+            conversation.messages = conversation.messages.filter(msg => msg.id !== messageId);
           }
         });
       },

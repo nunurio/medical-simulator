@@ -12,7 +12,7 @@ export interface GeneratePatientParams {
 }
 
 export interface UsePatientGenerationReturn {
-  generatePatient: (params: GeneratePatientParams) => Promise<void>
+  generatePatient: (params: GeneratePatientParams, onSuccess?: () => void) => Promise<void>
   loading: boolean
   error: string | null
   clearError: () => void
@@ -38,7 +38,7 @@ export function usePatientGeneration(): UsePatientGenerationReturn {
     setError(null)
   }, [])
 
-  const generatePatient = useCallback(async (params: GeneratePatientParams): Promise<void> => {
+  const generatePatient = useCallback(async (params: GeneratePatientParams, onSuccess?: () => void): Promise<void> => {
     // 入力パラメータの検証
     if (!params.department || !params.difficulty) {
       const errorMessage = '診療科と難易度は必須です'
@@ -73,6 +73,9 @@ export function usePatientGeneration(): UsePatientGenerationReturn {
           message: '患者が正常に生成されました',
           duration: 3000
         })
+
+        // 成功コールバックを呼び出し
+        onSuccess?.()
       } else {
         // エラー時：エラーメッセージを設定
         const errorMessage = result.error || '患者生成に失敗しました'

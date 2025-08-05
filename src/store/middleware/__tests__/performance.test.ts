@@ -29,14 +29,14 @@ interface TestState extends PerformanceState {
 }
 
 describe('Performance Middleware', () => {
-  let useStore: any;
+  let useStore: ReturnType<typeof create<unknown>>;
 
   beforeEach(() => {
     // Create store with middleware - complex type composition requires assertions
     useStore = create(
-      (performanceMiddleware as any)(
+      (performanceMiddleware as (config: unknown) => unknown)(
         subscribeWithSelector(
-          immer((set: any, get: any) => ({
+          immer((set: (fn: (state: unknown) => void) => void, get: () => unknown) => ({
             vitals: {
               heartRate: 70,
               bloodPressure: { systolic: 120, diastolic: 80 },
@@ -52,18 +52,18 @@ describe('Performance Middleware', () => {
             },
             updateCount: 0,
             
-            updateHeartRate: (hr: number) => set((state: any) => {
+            updateHeartRate: (hr: number) => set((state: { vitals: { heartRate: number }; updateCount: number }) => {
               state.vitals.heartRate = hr;
               state.updateCount++;
             }),
             
-            updateBloodPressure: (systolic: number, diastolic: number) => set((state: any) => {
+            updateBloodPressure: (systolic: number, diastolic: number) => set((state: { vitals: { bloodPressure: { systolic: number; diastolic: number } }; updateCount: number }) => {
               state.vitals.bloodPressure.systolic = systolic;
               state.vitals.bloodPressure.diastolic = diastolic;
               state.updateCount++;
             }),
             
-            updatePatient: (patient: any) => set((state: any) => {
+            updatePatient: (patient: unknown) => set((state: { patient: unknown; updateCount: number }) => {
               state.patient = patient;
               state.updateCount++;
             }),

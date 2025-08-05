@@ -24,7 +24,7 @@ describe('generatePatientAction', () => {
     formData.append('difficulty', 'beginner');
     formData.append('mode', 'outpatient');
 
-    const result = await generatePatientAction({}, formData);
+    const result = await generatePatientAction({ success: false, error: 'Initial state' }, formData);
 
     expect(result.success).toBe(false);
     expect(result.error).toContain('department');
@@ -35,7 +35,7 @@ describe('generatePatientAction', () => {
     formData.append('department', 'internal-medicine');
     formData.append('mode', 'outpatient');
 
-    const result = await generatePatientAction({}, formData);
+    const result = await generatePatientAction({ success: false, error: 'Initial state' }, formData);
 
     expect(result.success).toBe(false);
     expect(result.error).toContain('difficulty');
@@ -63,7 +63,7 @@ describe('generatePatientAction', () => {
     formData.append('difficulty', 'beginner');
     formData.append('mode', 'outpatient');
 
-    const result = await generatePatientAction({}, formData);
+    const result = await generatePatientAction({ success: false, error: 'Initial state' }, formData);
 
     expect(result.success).toBe(true);
     expect(result.data).toBeDefined();
@@ -87,7 +87,7 @@ describe('generatePatientAction', () => {
     formData.append('difficulty', 'beginner');
     formData.append('mode', 'outpatient');
 
-    const result = await generatePatientAction({}, formData);
+    const result = await generatePatientAction({ success: false, error: 'Initial state' }, formData);
 
     expect(result.success).toBe(false);
     expect(result.error).toContain('API request failed: 500');
@@ -106,7 +106,7 @@ describe('generatePatientAction', () => {
     formData.append('difficulty', 'beginner');
     formData.append('mode', 'outpatient');
 
-    const result = await generatePatientAction({}, formData);
+    const result = await generatePatientAction({ success: false, error: 'Initial state' }, formData);
 
     expect(result.success).toBe(false);
     expect(result.error).toBe('Network error');
@@ -134,7 +134,7 @@ describe('generatePatientAction', () => {
     formData.append('difficulty', 'beginner');
     formData.append('mode', 'outpatient');
 
-    const result = await generatePatientAction({}, formData);
+    const result = await generatePatientAction({ success: false, error: 'Initial state' }, formData);
 
     expect(result.success).toBe(true);
     // リトライロジックが呼ばれることを確認

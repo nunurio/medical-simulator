@@ -53,6 +53,29 @@ export const useChatStore = create<ChatStore>()(
       });
     },
     
+    sendMessage: (conversationId, message) => {
+      set((state) => {
+        const conversation = state.conversations[conversationId];
+        if (conversation) {
+          conversation.messages.push({
+            ...message,
+            timestamp: createISODateTime(new Date().toISOString()),
+          });
+          conversation.lastActivityAt = createISODateTime(new Date().toISOString());
+        }
+      });
+    },
+    
+    removeMessage: (conversationId, messageId) => {
+      set((state) => {
+        const conversation = state.conversations[conversationId];
+        if (conversation) {
+          conversation.messages = conversation.messages.filter(msg => msg.id !== messageId);
+          conversation.lastActivityAt = createISODateTime(new Date().toISOString());
+        }
+      });
+    },
+    
     setTyping: (isTyping) => set((state) => {
       state.isTyping = isTyping;
     }),
