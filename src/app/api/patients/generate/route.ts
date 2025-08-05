@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { z } from 'zod';
 import { PatientPersonaGenerator } from '../../../../services/patient-persona-generator';
 import { GeneratePatientRequestSchema } from '../../../../types/api';
 
 
 // 初期問診票の質問項目
-const generateInitialQuestionnaire = (specialty: string, _difficulty: string) => {
+const generateInitialQuestionnaire = (specialty: string) => {
   const baseQuestions = [
     {
       id: 'chief_complaint',
@@ -95,7 +96,7 @@ export async function POST(request: NextRequest) {
     let body;
     try {
       body = await request.json();
-    } catch (error) {
+    } catch {
       return NextResponse.json(
         { error: 'Invalid JSON in request body' },
         { status: 400 }
@@ -106,7 +107,7 @@ export async function POST(request: NextRequest) {
     const validationResult = GeneratePatientRequestSchema.safeParse(body);
     
     if (!validationResult.success) {
-      const errorDetails = validationResult.error?.errors?.map(e => {
+      const errorDetails = validationResult.error?.issues?.map((e: z.ZodIssue) => {
         const field = e.path && e.path.length > 0 ? e.path.join('.') : 'unknown field';
         return `${field}: ${e.message}`;
       }) || ['Unknown validation error'];
@@ -128,8 +129,7 @@ export async function POST(request: NextRequest) {
 
     // 初期問診票を生成
     const initialQuestionnaire = generateInitialQuestionnaire(
-      validatedParams.specialty,
-      validatedParams.difficulty
+      validatedParams.specialty
     );
 
     // モデル設定を取得

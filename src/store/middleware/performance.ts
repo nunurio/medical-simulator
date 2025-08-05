@@ -35,7 +35,7 @@ let throttledCallCount = 0;
 
 // メモ化キャッシュとメトリクス
 const memoCache = new WeakMap<object, Map<(...args: unknown[]) => unknown, unknown>>();
-let cacheHits = 0;
+const cacheHits = 0;
 let cacheMisses = 0;
 
 // プロファイリング関連

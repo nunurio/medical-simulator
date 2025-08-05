@@ -1,6 +1,17 @@
 import { z } from 'zod';
 import { LLMService } from './llm-service';
-import type { PatientPersona } from '../types/patient';
+import type { 
+  PatientPersona, 
+  FamilyHistoryItem, 
+  PastIllness, 
+  Hospitalization, 
+  Condition, 
+  CurrentMedication, 
+  Allergy, 
+  VitalSigns, 
+  VitalSignsHistory
+} from '../types/patient';
+import type { ISODate } from '../types/core';
 import type { LLMResponse } from '../types/llm';
 import { createPatientId, createScenarioId } from '../types/core';
 
@@ -216,7 +227,7 @@ export class PatientPersonaGenerator {
       // ageからdateOfBirthを計算
       const currentYear = new Date().getFullYear();
       const birthYear = currentYear - validatedResponse.demographics.age;
-      const dateOfBirth = `${birthYear}-01-01` as any; // TODO: 適切なISODate型変換を実装
+      const dateOfBirth = `${birthYear}-01-01` as ISODate;
 
       const patientPersona: PatientPersona = {
         id: createPatientId(''),
@@ -232,20 +243,37 @@ export class PatientPersonaGenerator {
         presentIllness: '', // LLMから生成されない場合は空文字
         medicalHistory: {
           surgicalHistory: [],
-          ...validatedResponse.medicalHistory,
-          familyHistory: (validatedResponse.medicalHistory.familyHistory || []) as any[],
+          familyHistory: (validatedResponse.medicalHistory.familyHistory || []) as FamilyHistoryItem[],
+          pastIllnesses: (validatedResponse.medicalHistory.pastIllnesses || []) as PastIllness[],
+          hospitalizations: (validatedResponse.medicalHistory.hospitalizations || []) as Hospitalization[],
         },
-        currentConditions: (validatedResponse.medicalHistory.currentConditions || []) as any[],
-        medications: (validatedResponse.medicalHistory.currentMedications || []) as any[],
-        allergies: (validatedResponse.medicalHistory.allergies || []) as any[],
+        currentConditions: (validatedResponse.medicalHistory.currentConditions || []) as Condition[],
+        medications: (validatedResponse.medicalHistory.currentMedications || []) as CurrentMedication[],
+        allergies: (validatedResponse.medicalHistory.allergies || []) as Allergy[],
         vitalSigns: {
-          history: [] as any[], // 履歴は初期状態では空
-        } as any, // TODO: VitalSignsHistory型に適合するよう修正
+          baseline: {
+            bloodPressure: { systolic: 120, diastolic: 80, unit: 'mmHg' as const },
+            heartRate: { value: 72, unit: 'bpm' as const },
+            temperature: { value: 36.5, unit: 'celsius' as const },
+            respiratoryRate: { value: 16, unit: 'breaths/min' as const },
+            oxygenSaturation: { value: 98, unit: '%' as const },
+            recordedAt: new Date().toISOString() as import('../types/core').ISODateTime,
+          },
+          trend: 'stable' as const,
+          criticalValues: {
+            isHypotensive: false,
+            isHypertensive: false,
+            isTachycardic: false,
+            isBradycardic: false,
+            isFebrile: false,
+            isHypoxic: false,
+          }
+        },
         socialHistory: {},
         insurance: {
           provider: 'Unknown',
           policyNumber: '',
-          validUntil: new Date(new Date().getFullYear() + 1, 11, 31).toISOString() as any, // TODO: 適切なISODate型変換を実装
+          validUntil: new Date(new Date().getFullYear() + 1, 11, 31).toISOString().split('T')[0] as ISODate,
         },
       };
       
@@ -254,7 +282,7 @@ export class PatientPersonaGenerator {
       if (error instanceof SyntaxError) {
         throw new Error(`Invalid JSON in LLM response: ${error.message}`);
       } else if (error instanceof z.ZodError) {
-        throw new Error(`Invalid patient persona structure: ${error.errors.map((e: { message: string }) => e.message).join(', ')}`);
+        throw new Error(`Invalid patient persona structure: ${error.issues.map((e: z.ZodIssue) => e.message).join(', ')}`);
       } else {
         throw new Error(`Failed to parse LLM response: ${error instanceof Error ? error.message : 'Unknown error'}`);
       }

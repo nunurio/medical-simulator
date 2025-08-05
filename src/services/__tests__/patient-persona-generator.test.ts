@@ -155,7 +155,7 @@ describe('PatientPersonaGenerator', () => {
       });
 
       // Assert: 初級レベルに适した主訴（シンプルな症状）が生成される
-      expect(result.medicalHistory.chiefComplaint).toBe('動悸');
+      expect(result.chiefComplaint).toBe('動悸');
       expect(result.demographics.firstName).toBe('佐藤花子');
 
       // 生成呼び出しでコンテキストが適切に使用されることを確認
@@ -229,10 +229,10 @@ describe('PatientPersonaGenerator', () => {
       });
 
       // Assert: 上級レベルに适した複雑な症状が生成される
-      expect(result.medicalHistory.chiefComplaint).toContain('腰痛');
-      expect(result.medicalHistory.chiefComplaint).toContain('間欠性跛行');
+      expect(result.chiefComplaint).toContain('腰痛');
+      expect(result.chiefComplaint).toContain('間欠性跛行');
       expect(result.medicalHistory.pastIllnesses).toHaveLength(2);
-      expect(result.medicalHistory.currentMedications).toHaveLength(1);
+      expect(result.medications).toHaveLength(1);
 
       // 生成呼び出しでコンテキストが適切に使用されることを確認
       expect(mockLLMServiceInstance.generateCompletion).toHaveBeenCalledWith(
@@ -298,7 +298,7 @@ describe('PatientPersonaGenerator', () => {
       // Assert: 正しくパースされたオブジェクトが返される
       expect(result.demographics.firstName).toBe('鈴木恵子');
       expect(result.demographics.dateOfBirth).toBe('1983-01-01');
-      expect(result.medicalHistory.chiefComplaint).toBe('頭痛');
+      expect(result.chiefComplaint).toBe('頭痛');
     });
 
     it('無効なJSON形式のレスポンスでエラーを投げる', async () => {

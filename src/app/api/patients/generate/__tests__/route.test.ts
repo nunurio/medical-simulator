@@ -1,7 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { POST } from '../route';
+import { NextRequest } from 'next/server';
 import { PatientPersonaGenerator } from '../../../../../services/patient-persona-generator';
-import type { PatientPersona, Gender } from '../../../../../types/patient';
+import type { PatientPersona } from '../../../../../types/patient';
 import { createPatientId, createScenarioId } from '../../../../../types/core';
 
 // PatientPersonaGeneratorをモック
@@ -27,60 +28,54 @@ describe('/api/patients/generate POST', () => {
       id: createPatientId(''),
       scenarioId: createScenarioId(''),
       demographics: {
-        age: 45,
+        firstName: '太郎',
+        lastName: '田中',
+        dateOfBirth: '1979-01-15' as import('@/types/core').ISODate,
         gender: 'male' as const,
-        name: '田中太郎',
-        bloodType: 'A',
-        patientId: createPatientId(''),
+        bloodType: 'A+' as import('@/types/patient').BloodType,
       },
       chiefComplaint: '胸痛',
       presentIllness: '2時間前から続く胸部圧迫感',
       medicalHistory: {
-        chiefComplaint: '胸痛',
-        currentConditions: [],
+        surgicalHistory: [],
         pastIllnesses: [],
-        surgeries: [],
         hospitalizations: [],
-        allergies: [],
-        currentMedications: [],
         familyHistory: [],
-        socialHistory: {
-          smokingHistory: { status: 'former', packsPerDay: 1, years: 20 },
-          alcoholHistory: { frequency: 'occasional', amount: 2, type: 'beer' },
-          exerciseHistory: { frequency: 'rarely', type: '', duration: 0 },
-        },
       },
       currentConditions: [],
       medications: [],
       allergies: [],
       vitalSigns: {
-        current: {
-          temperature: { value: 36.8, unit: 'celsius', timestamp: new Date().toISOString() },
-          bloodPressure: { systolic: 140, diastolic: 90, timestamp: new Date().toISOString() },
-          heartRate: { value: 88, rhythm: 'regular', timestamp: new Date().toISOString() },
-          respiratoryRate: { value: 18, pattern: 'regular', timestamp: new Date().toISOString() },
-          oxygenSaturation: { value: 97, onRoomAir: true, timestamp: new Date().toISOString() },
+        baseline: {
+          bloodPressure: { systolic: 120, diastolic: 80, unit: 'mmHg' as const },
+          heartRate: { value: 72, unit: 'bpm' as const },
+          temperature: { value: 36.5, unit: 'celsius' as const },
+          respiratoryRate: { value: 16, unit: 'breaths/min' as const },
+          oxygenSaturation: { value: 98, unit: '%' as const },
+          recordedAt: new Date().toISOString() as import('@/types/core').ISODateTime,
         },
-        history: [],
+        trend: 'stable' as const,
+        criticalValues: {
+          isHypotensive: false,
+          isHypertensive: false,
+          isTachycardic: false,
+          isBradycardic: false,
+          isFebrile: false,
+          isHypoxic: false,
+        }
       },
-      socialHistory: {
-        smokingHistory: { status: 'former', packsPerDay: 1, years: 20 },
-        alcoholHistory: { frequency: 'occasional', amount: 2, type: 'beer' },
-        exerciseHistory: { frequency: 'rarely', type: '', duration: 0 },
-      },
+      socialHistory: {},
       insurance: {
         provider: 'Health Insurance Co.',
         policyNumber: 'HIC123456',
-        groupNumber: 'GRP789',
-        effectiveDate: '2023-01-01T00:00:00.000Z',
-        expirationDate: '2024-12-31T23:59:59.999Z',
+        validUntil: '2024-12-31' as import('@/types/core').ISODate,
       },
     };
 
     mockGeneratorInstance.generatePersona.mockResolvedValue(mockPatientPersona);
 
     // Act: リクエストを作成してPOSTを呼び出す
-    const request = new Request('http://localhost:3000/api/patients/generate', {
+    const request = new NextRequest('http://localhost:3000/api/patients/generate', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -125,7 +120,7 @@ describe('/api/patients/generate POST', () => {
 
   it('無効なリクエストボディで400エラーを返す', async () => {
     // Act: 無効なリクエストボディでPOSTを呼び出す
-    const request = new Request('http://localhost:3000/api/patients/generate', {
+    const request = new NextRequest('http://localhost:3000/api/patients/generate', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -151,7 +146,7 @@ describe('/api/patients/generate POST', () => {
 
   it('必須フィールドが欠けている場合に400エラーを返す', async () => {
     // Act: 必須フィールドが欠けているリクエスト
-    const request = new Request('http://localhost:3000/api/patients/generate', {
+    const request = new NextRequest('http://localhost:3000/api/patients/generate', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -179,7 +174,7 @@ describe('/api/patients/generate POST', () => {
     mockGeneratorInstance.generatePersona.mockRejectedValue(new Error('LLM service error'));
 
     // Act: 有効なリクエストでPOSTを呼び出す
-    const request = new Request('http://localhost:3000/api/patients/generate', {
+    const request = new NextRequest('http://localhost:3000/api/patients/generate', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -205,7 +200,7 @@ describe('/api/patients/generate POST', () => {
 
   it('JSON形式でないリクエストボディで400エラーを返す', async () => {
     // Act: JSON形式でないリクエストボディ
-    const request = new Request('http://localhost:3000/api/patients/generate', {
+    const request = new NextRequest('http://localhost:3000/api/patients/generate', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
