@@ -31,7 +31,8 @@ function getStore() {
   return store;
 }
 
-// Type for the useStore hook
+// Type for the useStore hook (commented out as unused)
+/*
 type UseStore = {
   <T = AppState>(selector?: (state: AppState) => T): T;
   getState: () => AppState;
@@ -39,6 +40,7 @@ type UseStore = {
   subscribe: (listener: (state: AppState) => void) => () => void;
   isHydrated: boolean;
 };
+*/
 
 /**
  * Custom hook to access the app store

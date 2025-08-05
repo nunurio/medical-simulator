@@ -44,6 +44,7 @@ export interface PatientStore {
   activePatientId: PatientId | null;
   loading: boolean;
   error: string | null;
+  validationService?: unknown; // Optional dependency injection
   
   // Actions
   setPatients: (patients: Record<PatientId, PatientPersona>) => void;
