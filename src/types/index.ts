@@ -22,3 +22,6 @@ export * from './validation-exports';
 
 // LLM types
 export * from './llm';
+
+// API types
+export * from './api';
