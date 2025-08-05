@@ -1,10 +1,16 @@
 import { z } from 'zod';
+import { llmConfigSchema } from './llm-config';
 
 // 環境変数のスキーマ定義
 const envSchema = z.object({
   NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
   NEXT_PUBLIC_API_BASE: z.string().url().optional(),
   NEXT_PUBLIC_USE_MOCKS: z.enum(['true', 'false']).optional(),
+  OPENAI_API_KEY: z.string().min(1).optional(),
+  OPENAI_MODEL: z.string().optional(),
+  OPENAI_ORG_ID: z.string().optional(),
+  OPENAI_RPM_LIMIT: z.string().regex(/^\d+$/).optional(),
+  OPENAI_TPM_LIMIT: z.string().regex(/^\d+$/).optional(),
 });
 
 export type Environment = z.infer<typeof envSchema>;
@@ -53,6 +59,7 @@ const configSchema = z.object({
   ui: uiConfigSchema,
   api: apiConfigSchema,
   mockPatients: z.array(mockPatientSchema),
+  llm: llmConfigSchema.optional(),
 });
 
 export type AppConfig = z.infer<typeof configSchema>;
