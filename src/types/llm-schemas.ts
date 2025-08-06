@@ -145,7 +145,7 @@ export const PatientPersonaJsonSchema: JsonSchema = {
           additionalProperties: false
         }
       },
-      required: ['firstName', 'lastName', 'dateOfBirth', 'gender', 'bloodType'],
+      required: ['firstName', 'lastName', 'dateOfBirth', 'gender', 'bloodType', 'phoneNumber', 'email', 'emergencyContact'],
       additionalProperties: false
     },
     chiefComplaint: { type: 'string' },
@@ -220,7 +220,7 @@ export const PatientPersonaJsonSchema: JsonSchema = {
         temperature: { type: 'number' },
         oxygenSaturation: { type: 'number' }
       },
-      required: ['systolicBP', 'diastolicBP', 'heartRate', 'respiratoryRate', 'temperature'],
+      required: ['systolicBP', 'diastolicBP', 'heartRate', 'respiratoryRate', 'temperature', 'oxygenSaturation'],
       additionalProperties: false
     },
     socialHistory: {
@@ -232,7 +232,7 @@ export const PatientPersonaJsonSchema: JsonSchema = {
         occupation: { type: 'string' },
         livingConditions: { type: 'string' }
       },
-      required: ['smokingStatus', 'alcoholUse', 'drugUse'],
+      required: ['smokingStatus', 'alcoholUse', 'drugUse', 'occupation', 'livingConditions'],
       additionalProperties: false
     },
     insurance: {
@@ -243,7 +243,7 @@ export const PatientPersonaJsonSchema: JsonSchema = {
         groupNumber: { type: 'string' },
         type: { type: 'string' }
       },
-      required: ['provider', 'policyNumber', 'type'],
+      required: ['provider', 'policyNumber', 'groupNumber', 'type'],
       additionalProperties: false
     }
   },

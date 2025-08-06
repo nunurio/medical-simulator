@@ -73,8 +73,13 @@ export class LLMService {
         ...(validatedRequest.systemPrompt ? [{ role: 'system' as const, content: validatedRequest.systemPrompt }] : []),
         { role: 'user' as const, content: validatedRequest.userPrompt }
       ],
-      temperature: validatedRequest.temperature ?? config.temperature,
     };
+
+    // o3モデルはtemperatureをサポートしないため、デフォルト値（1）のみ使用
+    // 他のモデルの場合は、リクエストまたはコンフィグから取得した値を使用
+    if (!isO3Model) {
+      apiParams.temperature = validatedRequest.temperature ?? config.temperature;
+    }
 
     // トークン数の設定（o3モデルはmax_completion_tokens、他はmax_tokens）
     const maxTokens = validatedRequest.maxTokens ?? config.maxTokens;

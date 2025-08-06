@@ -21,7 +21,7 @@ export function ChatInterface({ encounterId, className }: ChatInterfaceProps) {
     sendMessage, 
     handleTyping,
     clearError
-  } = useChat()
+  } = useChat(encounterId)
 
   const handleMessageSubmit = (message: string) => {
     sendMessage(message)

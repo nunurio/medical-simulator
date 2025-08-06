@@ -1,6 +1,7 @@
-import { useCallback, useRef } from 'react';
+import { useCallback, useRef, useEffect } from 'react';
 import { useStore } from './use-store';
 import type { Patient, ChatConversation } from '../types/state';
+import type { EncounterId } from '../types/core';
 import { sendChatMessage } from '../app/actions/send-chat-message';
 
 export interface UseChatReturn {
@@ -19,7 +20,7 @@ export interface UseChatReturn {
   retryMessage: (messageId: string) => Promise<void>;
 }
 
-export function useChat(): UseChatReturn {
+export function useChat(encounterId?: EncounterId): UseChatReturn {
   const store = useStore();
   const { 
     // Chat store properties
@@ -30,6 +31,8 @@ export function useChat(): UseChatReturn {
     sendMessage: storeSendMessage,
     removeMessage,
     setTyping,
+    createConversation,
+    setActiveConversation,
     // Patient store properties
     patients,
     activePatientId,
@@ -40,6 +43,14 @@ export function useChat(): UseChatReturn {
     setLoading
   } = store;
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  // encounterIdがある場合は会話を初期化
+  useEffect(() => {
+    if (encounterId && !activeConversationId) {
+      const conversationId = createConversation(encounterId);
+      setActiveConversation(conversationId);
+    }
+  }, [encounterId, activeConversationId, createConversation, setActiveConversation]);
 
   const currentPatient = activePatientId 
     ? patients[activePatientId] 

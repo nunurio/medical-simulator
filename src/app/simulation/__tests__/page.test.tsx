@@ -16,7 +16,7 @@ vi.mock('next/navigation', () => ({
 
 // Mock ChatInterface component
 vi.mock('@/components/chat/ChatInterface', () => ({
-  default: function MockChatInterface() {
+  ChatInterface: function MockChatInterface() {
     return <div data-testid="chat-interface">Chat Interface Component</div>
   }
 }))

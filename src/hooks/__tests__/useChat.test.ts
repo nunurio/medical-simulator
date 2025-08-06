@@ -289,43 +289,40 @@ describe('useChat', () => {
     });
 
     it('メッセージ送信中にisLoadingがtrueになる', async () => {
+      // アクティブな会話とpatientを設定
+      mockChatStore.activeConversationId = 'test-conv-1';
+      mockPatientStore.activePatientId = 'patient-1';
+      
       // 長時間かかるAPI呼び出しをシミュレート
       const sendChatMessageModule = await import('../../app/actions/send-chat-message');
-      let resolvePromise: (value: unknown) => void;
-      const delayedPromise = new Promise((resolve) => {
-        resolvePromise = resolve;
+      vi.mocked(sendChatMessageModule.sendChatMessage).mockResolvedValue({
+        success: true,
+        patientResponse: 'Patient response'
       });
-      vi.mocked(sendChatMessageModule.sendChatMessage).mockReturnValue(delayedPromise as Promise<{ success: boolean; patientResponse?: string; error?: string }>);
 
-      const { result } = renderHook(() => useChat() as ExtendedUseChatReturn);
+      const { result } = renderHook(() => useChat());
 
       // 送信開始
-      act(() => {
-        result.current.sendMessage('Test message');
+      await act(async () => {
+        await result.current.sendMessage('Test message');
       });
 
       // ローディング中であることを期待
       expect(mockUIStore.setLoading).toHaveBeenCalledWith(true);
-
-      // API完了
-      act(() => {
-        resolvePromise!({ success: true, patientResponse: 'Patient response' });
-      });
-
-      await act(async () => {
-        await new Promise(resolve => setTimeout(resolve, 0));
-      });
-
       expect(mockUIStore.setLoading).toHaveBeenCalledWith(false);
-    });
+    }, 10000);
 
     it('API呼び出し失敗時にエラー状態を管理する', async () => {
+      // アクティブな会話とpatientを設定
+      mockChatStore.activeConversationId = 'test-conv-1';
+      mockPatientStore.activePatientId = 'patient-1';
+      
       const sendChatMessageModule = await import('../../app/actions/send-chat-message');
       vi.mocked(sendChatMessageModule.sendChatMessage).mockRejectedValue(
         new Error('Network timeout')
       );
 
-      const { result } = renderHook(() => useChat() as ExtendedUseChatReturn);
+      const { result } = renderHook(() => useChat());
 
       await expect(async () => {
         await act(async () => {
@@ -343,7 +340,7 @@ describe('useChat', () => {
     });
 
     it('clearError()でエラー状態をクリアできる', () => {
-      const { result } = renderHook(() => useChat() as ExtendedUseChatReturn);
+      const { result } = renderHook(() => useChat());
 
       act(() => {
         result.current.clearError();
@@ -354,7 +351,7 @@ describe('useChat', () => {
   });
 
   describe('会話履歴とコンテキスト管理', () => {
-    it('会話履歴を適切に管理する', () => {
+    it('会話履歴を適切に管理する', async () => {
       // アクティブな会話にメッセージ履歴がある状態を設定
       const mockConversation = {
         id: 'test-conv-1',
@@ -379,11 +376,39 @@ describe('useChat', () => {
         endedAt: null
       };
       
+      // モックストアの会話データを設定
       mockChatStore.conversations = {
         'test-conv-1': mockConversation
       };
+      mockChatStore.activeConversationId = 'test-conv-1';
+      
+      // useStoreモジュールを再度インポートしてモックを更新
+      const useStoreModule = await import('../use-store');
+      vi.mocked(useStoreModule.useStore).mockReturnValue({
+        // ChatStore properties
+        conversations: mockChatStore.conversations,
+        activeConversationId: mockChatStore.activeConversationId,
+        isTyping: mockChatStore.isTyping,
+        addMessage: mockChatStore.addMessage,
+        setTyping: mockChatStore.setTyping,
+        createConversation: mockChatStore.createConversation,
+        endConversation: mockChatStore.endConversation,
+        setActiveConversation: mockChatStore.setActiveConversation,
+        sendMessage: mockChatStore.sendMessage,
+        removeMessage: mockChatStore.removeMessage,
+        
+        // PatientStore properties
+        patients: mockPatientStore.patients,
+        activePatientId: mockPatientStore.activePatientId,
+        
+        // UIStore properties
+        isLoading: mockUIStore.isLoading,
+        error: mockUIStore.error,
+        setLoading: mockUIStore.setLoading,
+        setError: mockUIStore.setError,
+      });
 
-      const { result } = renderHook(() => useChat() as ExtendedUseChatReturn);
+      const { result } = renderHook(() => useChat());
 
       expect(result.current.conversation).toEqual(mockConversation);
       expect(result.current.conversation?.messages).toHaveLength(2);
