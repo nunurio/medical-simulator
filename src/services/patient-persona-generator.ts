@@ -430,7 +430,7 @@ export class PatientPersonaGenerator {
    * @param jsonContent パースされたJSONコンテンツ
    * @returns パースされた患者ペルソナ
    */
-  private parseResponseLegacy(response: LLMResponse, jsonContent: any): PatientPersona {
+  private parseResponseLegacy(response: LLMResponse, jsonContent: unknown): PatientPersona {
     // レスポンスのクリーニング（マークダウンや余分な文字を削除）
     let cleanedContent = response.content.trim();
     

@@ -1,17 +1,22 @@
 import { useCallback, useRef } from 'react';
 import { useStore } from './use-store';
-import type { Patient } from '../types/state';
+import type { Patient, ChatConversation } from '../types/state';
 import { sendChatMessage } from '../app/actions/send-chat-message';
 
 export interface UseChatReturn {
   // State
+  conversation: ChatConversation | null;
   isTyping: boolean;
   activeConversationId: string | null;
   currentPatient: Patient | null;
+  error: string | null;
+  isLoading: boolean;
   
   // Actions
   sendMessage: (content: string) => Promise<void>;
   handleTyping: () => void;
+  clearError: () => void;
+  retryMessage: (messageId: string) => Promise<void>;
 }
 
 export function useChat(): UseChatReturn {
@@ -27,12 +32,21 @@ export function useChat(): UseChatReturn {
     setTyping,
     // Patient store properties
     patients,
-    activePatientId
+    activePatientId,
+    // UI store properties
+    error,
+    isLoading,
+    setError,
+    setLoading
   } = store;
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const currentPatient = activePatientId 
     ? patients[activePatientId] 
+    : null;
+
+  const conversation = activeConversationId
+    ? conversations[activeConversationId]
     : null;
 
   const sendMessage = useCallback(async (content: string) => {
@@ -44,6 +58,10 @@ export function useChat(): UseChatReturn {
       throw new Error('患者が選択されていません');
     }
 
+    // ローディング状態開始
+    setLoading(true);
+    setError(null);
+
     // 楽観的更新 - ユーザーメッセージを即座に追加
     const optimisticMessageId = `msg-${Date.now()}`;
     storeSendMessage(activeConversationId, {
@@ -52,6 +70,7 @@ export function useChat(): UseChatReturn {
       sender: 'provider',
       timestamp: new Date().toISOString(),
       type: 'text',
+      status: 'sending',
     });
 
     try {
@@ -79,10 +98,21 @@ export function useChat(): UseChatReturn {
     } catch (error) {
       // エラー時は楽観的更新をロールバック
       removeMessage(activeConversationId, optimisticMessageId);
+      
+      // エラー状態を設定
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      setError({
+        message: errorMessage,
+        type: 'api_error',
+        retry: () => sendMessage(content)
+      });
+      
       console.error('メッセージ送信エラー:', error);
       throw error;
+    } finally {
+      setLoading(false);
     }
-  }, [storeSendMessage, addMessage, removeMessage, activeConversationId, activePatientId]);
+  }, [storeSendMessage, addMessage, removeMessage, activeConversationId, activePatientId, setLoading, setError]);
 
   const handleTyping = useCallback(() => {
     setTyping(true);
@@ -98,11 +128,39 @@ export function useChat(): UseChatReturn {
     }, 1000);
   }, [setTyping]);
 
+  const clearError = useCallback(() => {
+    setError(null);
+  }, [setError]);
+
+  const retryMessage = useCallback(async (messageId: string) => {
+    if (!activeConversationId) {
+      throw new Error('アクティブな会話がありません');
+    }
+
+    const conversation = conversations[activeConversationId];
+    if (!conversation) {
+      throw new Error('会話が見つかりません');
+    }
+
+    const message = conversation.messages.find(msg => msg.id === messageId);
+    if (!message) {
+      throw new Error('メッセージが見つかりません');
+    }
+
+    // 元のメッセージ内容で再送信
+    await sendMessage(message.content);
+  }, [activeConversationId, conversations, sendMessage]);
+
   return {
+    conversation,
     isTyping,
     activeConversationId,
     currentPatient,
+    error,
+    isLoading,
     sendMessage,
     handleTyping,
+    clearError,
+    retryMessage,
   };
 }

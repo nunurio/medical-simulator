@@ -34,7 +34,7 @@ export interface ResponseFormat {
     strict: true;
     schema: {
       type: 'object';
-      properties: Record<string, any>;
+      properties: Record<string, unknown>;
       required: string[];
       additionalProperties: false;
     };
@@ -51,7 +51,7 @@ export const ResponseFormatSchema = z.object({
     strict: z.literal(true),
     schema: z.object({
       type: z.literal('object'),
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+       
       properties: z.record(z.string(), z.object({
         type: z.string()
       }).passthrough() as unknown),

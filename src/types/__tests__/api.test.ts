@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { z } from 'zod';
+import type { PatientId, ScenarioId, ISODate, ISODateTime } from '../core';
 import {
   GeneratePatientRequestSchema,
   GeneratePatientResponseSchema,
@@ -251,12 +251,12 @@ describe('API Types', () => {
     it('should validate valid GeneratePatientResponse', () => {
       const validResponse: GeneratePatientResponse = {
         patient: {
-          id: 'patient_123' as any,
-          scenarioId: 'scenario_456' as any,
+          id: 'patient_123' as PatientId,
+          scenarioId: 'scenario_456' as ScenarioId,
           demographics: {
             firstName: '太郎',
             lastName: '山田',
-            dateOfBirth: '1980-01-01' as any,
+            dateOfBirth: '1980-01-01' as ISODate,
             gender: 'male',
             bloodType: 'A+',
           },
@@ -266,7 +266,7 @@ describe('API Types', () => {
             temperature: { value: 36.5, unit: 'celsius' },
             respiratoryRate: { value: 16, unit: 'breaths/min' },
             oxygenSaturation: { value: 98, unit: '%' },
-            recordedAt: '2023-01-01T10:00:00Z' as any,
+            recordedAt: '2023-01-01T10:00:00Z' as ISODateTime,
           },
           currentMedications: [],
           allergies: [],
@@ -281,7 +281,7 @@ describe('API Types', () => {
           insuranceInfo: {
             provider: 'テスト保険',
             policyNumber: 'POL123456',
-            validUntil: '2024-12-31' as any,
+            validUntil: '2024-12-31' as ISODate,
           },
         },
         initialQuestionnaire: {

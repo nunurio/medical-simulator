@@ -4,55 +4,12 @@ import { Loader2, AlertCircle, MessageSquare } from 'lucide-react'
 import { MessageList } from './MessageList'
 import { MessageInput } from './MessageInput'
 import { TypingIndicator } from './TypingIndicator'
+import { useChat } from '@/hooks/useChat'
 import type { EncounterId, ISODateTime } from '@/types/core'
 
 interface ChatInterfaceProps {
   encounterId: EncounterId
   className?: string
-}
-
-// テスト用の簡易useChatフック（実際の実装は別エージェントが担当）
-function useChat(encounterId: EncounterId) {
-  // 実際のアプリケーションでは、これは別のエージェントが実装したuseChatフックに置き換わる
-  // 現在はテスト通過のための最小限の実装
-  const mockConversation = {
-    id: 'conv-1',
-    encounterId: encounterId,
-    startedAt: '2024-01-01T10:00:00Z' as ISODateTime,
-    endedAt: null,
-    lastActivityAt: '2024-01-01T10:02:00Z' as ISODateTime,
-    status: 'active' as const,
-    participants: {
-      patient: { role: 'patient' as const, name: '田中太郎' },
-      provider: { role: 'provider' as const, name: '医師' }
-    },
-    messages: [
-      {
-        id: 'msg-1',
-        encounterId: encounterId,
-        timestamp: '2024-01-01T10:00:00Z' as ISODateTime,
-        messageType: 'patient' as const,
-        content: '胸が痛みます'
-      },
-      {
-        id: 'msg-2',
-        encounterId: encounterId,
-        timestamp: '2024-01-01T10:01:00Z' as ISODateTime,
-        messageType: 'simulator' as const,
-        content: 'どのような痛みですか？'
-      }
-    ]
-  }
-
-  return {
-    conversation: mockConversation,
-    isLoading: false,
-    error: null,
-    isTyping: false,
-    sendMessage: (_message: string) => {},
-    startTyping: () => {},
-    stopTyping: () => {},
-  }
 }
 
 export function ChatInterface({ encounterId, className }: ChatInterfaceProps) {
@@ -62,9 +19,9 @@ export function ChatInterface({ encounterId, className }: ChatInterfaceProps) {
     error, 
     isTyping, 
     sendMessage, 
-    startTyping, 
-    stopTyping 
-  } = useChat(encounterId)
+    handleTyping,
+    clearError
+  } = useChat()
 
   const handleMessageSubmit = (message: string) => {
     sendMessage(message)
@@ -72,9 +29,7 @@ export function ChatInterface({ encounterId, className }: ChatInterfaceProps) {
 
   const handleTypingChange = (typing: boolean) => {
     if (typing) {
-      startTyping()
-    } else {
-      stopTyping()
+      handleTyping()
     }
   }
 
@@ -101,7 +56,7 @@ export function ChatInterface({ encounterId, className }: ChatInterfaceProps) {
           エラーが発生しました
         </h3>
         <p className="text-sm text-muted-foreground mb-4">
-          {error.message}
+          {typeof error === 'string' ? error : error?.message || 'Unknown error occurred'}
         </p>
         <button
           onClick={() => window.location.reload()}

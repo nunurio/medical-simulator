@@ -68,16 +68,16 @@ describe('Performance Middleware', () => {
               state.updateCount++;
             }),
             
-            batchUpdateVitals: (vitals: any) => {
+            batchUpdateVitals: (vitals: Partial<TestState['vitals']>) => {
               batchUpdates(() => {
-                set((state: any) => {
+                set((state: TestState) => {
                   Object.assign(state.vitals, vitals);
                   state.updateCount++;
                 });
               });
             },
             
-            incrementCounter: () => set((state: any) => {
+            incrementCounter: () => set((state: TestState) => {
               state.updateCount++;
             }),
           }))
@@ -89,7 +89,7 @@ describe('Performance Middleware', () => {
   describe('Memoized Selectors', () => {
     it('should create memoized selector that caches results', () => {
       const selectVitals = createMemoizedSelector(
-        (state: any) => state.vitals,
+        (state: TestState) => state.vitals,
         (vitals) => ({
           heartRate: vitals.heartRate,
           bloodPressure: `${vitals.bloodPressure.systolic}/${vitals.bloodPressure.diastolic}`,
@@ -107,7 +107,7 @@ describe('Performance Middleware', () => {
 
     it('should invalidate memoized selector when dependencies change', () => {
       const selectVitals = createMemoizedSelector(
-        (state: any) => state.vitals,
+        (state: TestState) => state.vitals,
         (vitals) => ({
           heartRate: vitals.heartRate,
         })
@@ -127,7 +127,7 @@ describe('Performance Middleware', () => {
 
     it('should not invalidate memoized selector when unrelated state changes', () => {
       const selectVitals = createMemoizedSelector(
-        (state: any) => state.vitals,
+        (state: TestState) => state.vitals,
         (vitals) => ({
           heartRate: vitals.heartRate,
         })

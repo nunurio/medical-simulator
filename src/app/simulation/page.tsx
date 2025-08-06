@@ -8,7 +8,7 @@ import dynamic from 'next/dynamic'
 
 // ChatInterfaceコンポーネントを動的インポート（別のエージェントが実装予定）
 const ChatInterface = dynamic(
-  () => import('@/components/chat/ChatInterface'),
+  () => import('@/components/chat/ChatInterface').then(mod => ({ default: mod.ChatInterface })),
   {
     loading: () => (
       <div className="flex items-center justify-center h-full">
