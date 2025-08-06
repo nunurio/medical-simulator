@@ -33,6 +33,27 @@ export const SYSTEM_PROMPTS = {
 4. 医学的に正確な情報を使用する
 5. 日本語で回答する
 
+重要: 必ず以下のJSON形式で応答してください。その他のテキストや説明は含めないでください。
+
+{
+  "demographics": {
+    "age": 年齢（数値）,
+    "gender": "male" または "female" または "other",
+    "name": "患者氏名",
+    "bloodType": "A+" などの血液型（オプション）
+  },
+  "medicalHistory": {
+    "chiefComplaint": "主訴",
+    "currentConditions": [],
+    "pastIllnesses": [],
+    "surgeries": [],
+    "hospitalizations": [],
+    "allergies": [],
+    "currentMedications": [],
+    "familyHistory": []
+  }
+}
+
 与えられた情報に基づいて、詳細な患者ペルソナを生成してください。
 `.trim(),
 
@@ -84,6 +105,8 @@ export const USER_PROMPTS = {
 ${JSON.stringify(params, null, 2)}
 
 患者の基本情報、症状、病歴、現在の状態を含む詳細なペルソナを作成してください。
+
+重要: 応答は必ず有効なJSONのみを返してください。追加の説明やマークダウンは含めないでください。
 `.trim(),
 
   CHAT_RESPONSE: (message: string, context: Record<string, unknown>) => `

@@ -212,8 +212,26 @@ export class PatientPersonaGenerator {
    */
   private parseResponse(response: LLMResponse): PatientPersona {
     try {
+      // レスポンスのクリーニング（マークダウンや余分な文字を削除）
+      let cleanedContent = response.content.trim();
+      
+      // マークダウンのコードブロックを削除
+      cleanedContent = cleanedContent.replace(/```json\s*/gi, '').replace(/```\s*/gi, '');
+      
+      // 先頭の非JSON文字を削除（例：**Patient...などのマークダウン）
+      const jsonStartIndex = cleanedContent.search(/\{/);
+      if (jsonStartIndex > 0) {
+        cleanedContent = cleanedContent.substring(jsonStartIndex);
+      }
+      
+      // 末尾の非JSON文字を削除
+      const jsonEndIndex = cleanedContent.lastIndexOf('}');
+      if (jsonEndIndex > -1 && jsonEndIndex < cleanedContent.length - 1) {
+        cleanedContent = cleanedContent.substring(0, jsonEndIndex + 1);
+      }
+      
       // JSONとしてパース
-      const jsonContent = JSON.parse(response.content);
+      const jsonContent = JSON.parse(cleanedContent);
       
       // Zodスキーマでバリデーション
       const validatedResponse = PatientPersonaResponseSchema.parse(jsonContent);
@@ -280,10 +298,15 @@ export class PatientPersonaGenerator {
       return patientPersona;
     } catch (error) {
       if (error instanceof SyntaxError) {
+        console.error('JSON parse error. Original content:', response.content);
+        console.error('Cleaned content:', cleanedContent);
         throw new Error(`Invalid JSON in LLM response: ${error.message}`);
       } else if (error instanceof z.ZodError) {
+        console.error('Zod validation error:', error.issues);
+        console.error('JSON content:', jsonContent);
         throw new Error(`Invalid patient persona structure: ${error.issues.map((e: z.ZodIssue) => e.message).join(', ')}`);
       } else {
+        console.error('Unexpected error:', error);
         throw new Error(`Failed to parse LLM response: ${error instanceof Error ? error.message : 'Unknown error'}`);
       }
     }
