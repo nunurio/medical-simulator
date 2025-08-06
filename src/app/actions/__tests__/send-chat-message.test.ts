@@ -88,14 +88,14 @@ describe('sendChatMessage Server Action', () => {
   beforeEach(async () => {
     // LLMServiceのモック設定
     const { LLMService } = await import('../../../services/llm-service');
-    vi.mocked(LLMService.getInstance).mockReturnValue(mockLLMService as any);
+    vi.mocked(LLMService.getInstance).mockReturnValue(mockLLMService);
 
     // ストアのモック設定
     const { useChatStore } = await import('../../../store/chat-store');
     const { usePatientStore } = await import('../../../store/patient-store');
     
-    vi.mocked(useChatStore.getState).mockReturnValue(mockChatState as any);
-    vi.mocked(usePatientStore.getState).mockReturnValue(mockPatientState as any);
+    vi.mocked(useChatStore.getState).mockReturnValue(mockChatState);
+    vi.mocked(usePatientStore.getState).mockReturnValue(mockPatientState);
 
     // LLMServiceのレスポンスモック
     mockLLMService.generateChatResponse.mockResolvedValue({

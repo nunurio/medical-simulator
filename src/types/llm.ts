@@ -10,11 +10,12 @@ import type { EncounterId } from './core';
  * 医療シミュレーションアプリケーションで使用される各種LLMタスクを定義
  */
 export const LLMPromptTypeSchema = z.enum([
-  'patient_generation',      // 患者ペルソナ生成
-  'chat_response',          // チャット応答
-  'examination_finding',    // 診察所見
-  'test_result_generation', // 検査結果生成
-  'clinical_update',        // 臨床更新
+  'patient_generation',         // 患者ペルソナ生成
+  'patient_persona_generation', // 患者ペルソナ生成（OpenAI o3用）  
+  'chat_response',             // チャット応答
+  'examination_finding',       // 診察所見
+  'test_result_generation',    // 検査結果生成
+  'clinical_update',           // 臨床更新
 ]);
 
 export type LLMPromptType = z.infer<typeof LLMPromptTypeSchema>;
@@ -23,6 +24,42 @@ export type LLMPromptType = z.infer<typeof LLMPromptTypeSchema>;
  * LLMリクエストスキーマ
  * LLMへのリクエストの構造と制約を定義
  */
+/**
+ * OpenAI Structured Outputs用のResponseFormat型定義
+ */
+export interface ResponseFormat {
+  type: 'json_schema';
+  json_schema: {
+    name: string;
+    strict: true;
+    schema: {
+      type: 'object';
+      properties: Record<string, any>;
+      required: string[];
+      additionalProperties: false;
+    };
+  };
+}
+
+/**
+ * ResponseFormatスキーマ
+ */
+export const ResponseFormatSchema = z.object({
+  type: z.literal('json_schema'),
+  json_schema: z.object({
+    name: z.string(),
+    strict: z.literal(true),
+    schema: z.object({
+      type: z.literal('object'),
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      properties: z.record(z.string(), z.object({
+        type: z.string()
+      }).passthrough() as unknown),
+      required: z.array(z.string()),
+      additionalProperties: z.literal(false)
+    })
+  })
+});
 export const LLMRequestSchema = z.object({
   type: LLMPromptTypeSchema,
   context: z.record(z.string(), z.unknown()),
@@ -38,6 +75,7 @@ export const LLMRequestSchema = z.object({
     .positive({ message: VALIDATION_MESSAGES.RANGE.TOO_LOW('最大トークン数', 1) })
     .int({ message: VALIDATION_MESSAGES.FORMAT.INVALID('最大トークン数', '整数') })
     .optional(),
+  responseFormat: ResponseFormatSchema.optional(),
 });
 
 export type LLMRequest = z.infer<typeof LLMRequestSchema>;

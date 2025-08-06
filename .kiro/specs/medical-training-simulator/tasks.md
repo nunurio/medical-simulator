@@ -138,7 +138,31 @@
   - **品質指標**: 307テスト全pass、完全TypeScript型安全性、本番対応設定管理
   - _要件: 1.3, 2.4 - 完了_
 
-- [x] 3.2 患者ペルソナ生成機能の実装
+- [x] 3.2 o3-2025-04-16モデル対応とStructured Outputs実装
+  - **OpenAI o3モデル設定** (`src/config/llm-config.ts`)
+    - o3-2025-04-16モデルへの切り替え設定
+    - モデル固有パラメータの調査と最適化
+    - max_completion_tokensパラメータの設定（reasoning model対応）
+  - **Structured Outputs実装** (`src/services/llm-service.ts`)
+    - response_formatパラメータの実装
+    - JSON Schemaによる厳密な出力構造定義
+    - strict、required、additionalPropertiesの適切な設定
+    - スキーマ準拠を保証する実装
+  - **患者ペルソナ生成用スキーマ定義** (`src/types/llm-schemas.ts`)
+    - PatientPersona型に完全準拠したJSON Schema定義
+    - 医療データ構造の厳密な型定義
+    - バリデーション要件の組み込み
+  - **エラーハンドリング強化**
+    - Structured Outputs固有のエラー処理
+    - スキーマ不一致時の詳細なエラーメッセージ
+    - フォールバック処理の実装
+  - **レスポンスパーサーの簡素化** (`src/services/patient-persona-generator.ts`)
+    - マークダウン・JSON文字列クリーニング処理の削除
+    - Structured Outputsによる確実なJSON取得
+    - パース処理の効率化とエラー削減
+  - _要件: 1.3, 2.4_
+
+- [x] 3.3 患者ペルソナ生成機能の実装
   - **医療知識ベース** (`src/config/medical-knowledge.ts`)
     - 診療科別疾患データベース（13専門科、年齢別疾患分布対応）
     - 難易度別症例設定（初級・中級・上級の複雑度・希少度・併存疾患数）
@@ -256,9 +280,11 @@
 
 - [ ] 5.2 チャット応答生成機能の実装
   - 患者ペルソナに基づいたリアルタイムチャット応答生成を実装
+  - o3-2025-04-16モデルとStructured Outputs機能の活用
   - コンテキスト保持と会話履歴管理機能を追加
   - 医療用語の適切性チェックとフィルタリング機能を実装
   - _要件: 2.4, 2.5_
+  - _blocked_by: 3.2_ （o3モデル設定とStructured Outputs実装が前提）
 
 ### 6. 基本電子カルテシステムの実装
 - [ ] 6.1 シンプルな電子カルテUIの作成

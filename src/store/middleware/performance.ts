@@ -185,7 +185,7 @@ export const performance: PerformanceMiddleware = (f) => (set, get, api) => {
   // setをラップしてレンダリング回数をカウント
   const wrappedSet: typeof set = (partial, replace = false) => {
     renderCount++;
-    return set(partial, replace as any);
+    return set(partial, replace as unknown);
   };
   
   const state = f(wrappedSet, get, api);

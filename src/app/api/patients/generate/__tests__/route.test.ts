@@ -19,7 +19,7 @@ describe('/api/patients/generate POST', () => {
     mockGeneratorInstance = {
       generatePersona: vi.fn(),
     };
-    mockPatientPersonaGenerator.mockImplementation(() => mockGeneratorInstance as any);
+    mockPatientPersonaGenerator.mockImplementation(() => mockGeneratorInstance );
   });
 
   it('有効なリクエストで患者ペルソナを生成し、適切なレスポンスを返す', async () => {

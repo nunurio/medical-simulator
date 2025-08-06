@@ -151,6 +151,162 @@ describe('LLMService', () => {
       await expect(service.generateCompletion(invalidRequest))
         .rejects.toThrow();
     });
+
+    describe('o3モデル対応', () => {
+      it('o3モデルでmax_completion_tokensパラメータを使用すべき', async () => {
+        const service = LLMService.getInstance();
+        
+        // o3モデル用の設定をモック
+        const { getLLMConfig } = await import('@/config/llm-config');
+        vi.mocked(getLLMConfig).mockReturnValue({
+          apiKey: 'test-api-key',
+          model: 'o3-mini',
+          temperature: 0.7,
+          maxTokens: 2000,
+          retries: {
+            maxAttempts: 3,
+            initialDelay: 1000,
+            maxDelay: 32000,
+            backoffFactor: 2,
+          },
+          rateLimit: {
+            requestsPerMinute: 60,
+            tokensPerMinute: 90000,
+          },
+        });
+
+        const mockRequest: LLMRequest = {
+          type: 'chat_response',
+          context: { patientId: '123' },
+          userPrompt: 'Hello, patient.',
+          maxTokens: 1500
+        };
+
+        const expectedResponse: LLMResponse = {
+          content: 'Hello! How can I help you today?',
+          usage: {
+            promptTokens: 10,
+            completionTokens: 8,
+            totalTokens: 18
+          },
+          model: 'o3-mini',
+          finishReason: 'stop'
+        };
+
+        const { callOpenAIWithRetry } = await import('@/lib/retry-logic');
+        vi.mocked(callOpenAIWithRetry).mockResolvedValue(expectedResponse);
+
+        await service.generateCompletion(mockRequest);
+        
+        // callOpenAIWithRetryに渡されるAPIコール関数が
+        // o3モデル用にmax_completion_tokensを使用していることを確認
+        expect(callOpenAIWithRetry).toHaveBeenCalledWith(
+          expect.any(Function),
+          3,
+          'generateCompletion'
+        );
+
+        // モックされたAPIコール関数を取得して確認
+        const apiCallFunction = vi.mocked(callOpenAIWithRetry).mock.calls[0][0];
+        expect(typeof apiCallFunction).toBe('function');
+      });
+
+      it('Structured Outputs対応でresponse_formatパラメータを設定すべき', async () => {
+        const service = LLMService.getInstance();
+        
+        const mockRequest: LLMRequest = {
+          type: 'patient_generation',
+          context: { age: 30 },
+          userPrompt: 'Generate a patient persona.',
+          responseFormat: {
+            type: 'json_schema',
+            json_schema: {
+              name: 'PatientPersona',
+              schema: {
+                type: 'object',
+                strict: true,
+                additionalProperties: false,
+                properties: {
+                  id: { type: 'string' },
+                  demographics: {
+                    type: 'object',
+                    properties: {
+                      firstName: { type: 'string' },
+                      lastName: { type: 'string' }
+                    },
+                    required: ['firstName', 'lastName'],
+                    additionalProperties: false
+                  }
+                },
+                required: ['id', 'demographics']
+              },
+              strict: true
+            }
+          }
+        };
+
+        const expectedResponse: LLMResponse = {
+          content: '{"id": "test-123", "demographics": {"firstName": "John", "lastName": "Doe"}}',
+          model: 'gpt-4o',
+          finishReason: 'stop'
+        };
+
+        const { callOpenAIWithRetry } = await import('@/lib/retry-logic');
+        vi.mocked(callOpenAIWithRetry).mockResolvedValue(expectedResponse);
+
+        const result = await service.generateCompletion(mockRequest);
+        
+        expect(result).toEqual(expectedResponse);
+        expect(callOpenAIWithRetry).toHaveBeenCalledOnce();
+      });
+
+      it('o3モデル以外ではmax_tokensを使用すべき', async () => {
+        const service = LLMService.getInstance();
+        
+        // 通常のモデル（gpt-4o）の設定
+        const { getLLMConfig } = await import('@/config/llm-config');
+        vi.mocked(getLLMConfig).mockReturnValue({
+          apiKey: 'test-api-key',
+          model: 'gpt-4o',
+          temperature: 0.7,
+          maxTokens: 2000,
+          retries: {
+            maxAttempts: 3,
+            initialDelay: 1000,
+            maxDelay: 32000,
+            backoffFactor: 2,
+          },
+          rateLimit: {
+            requestsPerMinute: 60,
+            tokensPerMinute: 90000,
+          },
+        });
+
+        const mockRequest: LLMRequest = {
+          type: 'chat_response',
+          context: { patientId: '123' },
+          userPrompt: 'Hello, patient.',
+          maxTokens: 1500
+        };
+
+        const expectedResponse: LLMResponse = {
+          content: 'Hello! How can I help you today?',
+          model: 'gpt-4o',
+          finishReason: 'stop'
+        };
+
+        const { callOpenAIWithRetry } = await import('@/lib/retry-logic');
+        vi.mocked(callOpenAIWithRetry).mockResolvedValue(expectedResponse);
+
+        await service.generateCompletion(mockRequest);
+        
+        expect(callOpenAIWithRetry).toHaveBeenCalledWith(
+          expect.any(Function),
+          3,
+          'generateCompletion'
+        );
+      });
+    });
   });
 
   describe('エラーハンドリング', () => {
@@ -237,10 +393,111 @@ describe('LLMService', () => {
 
         expect(result).toEqual(expectedResponse);
         expect(generateCompletionSpy).toHaveBeenCalledWith({
-          type: 'patient_generation',
+          type: 'patient_persona_generation',
           context: patientParams,
           systemPrompt: expect.stringContaining('医療シミュレーション'),
           userPrompt: expect.stringContaining('患者ペルソナ'),
+          responseFormat: expect.objectContaining({
+            type: 'json_schema',
+            json_schema: expect.objectContaining({
+              name: 'PatientPersona',
+              strict: true
+            })
+          })
+        });
+      });
+
+      it('Structured Outputsを使用して患者ペルソナを生成すべき', async () => {
+        const service = LLMService.getInstance();
+        
+        const patientParams = {
+          age: 35,
+          gender: 'female',
+          chiefComplaint: '頭痛',
+        };
+
+        const expectedStructuredResponse: LLMResponse = {
+          content: JSON.stringify({
+            id: '12345678-1234-1234-1234-123456789012',
+            scenarioId: '87654321-8765-8765-8765-876543210987',
+            demographics: {
+              firstName: 'Yuki',
+              lastName: 'Tanaka',
+              dateOfBirth: '1989-03-15T00:00:00.000Z',
+              gender: 'female',
+              bloodType: 'A+',
+              phoneNumber: '090-1234-5678',
+              email: 'yuki.tanaka@example.com',
+              emergencyContact: {
+                name: 'Hiroshi Tanaka',
+                relationship: 'spouse',
+                phoneNumber: '090-8765-4321'
+              }
+            },
+            chiefComplaint: '頭痛',
+            presentIllness: '3日前から続く頭痛で来院',
+            medicalHistory: {
+              conditions: []
+            },
+            currentConditions: [],
+            medications: [],
+            allergies: [],
+            vitalSigns: {
+              systolicBP: 120,
+              diastolicBP: 80,
+              heartRate: 72,
+              respiratoryRate: 16,
+              temperature: 36.5,
+              oxygenSaturation: 98
+            },
+            socialHistory: {
+              smokingStatus: 'never',
+              alcoholUse: 'social',
+              drugUse: 'none',
+              occupation: 'office worker',
+              livingConditions: 'lives with spouse'
+            },
+            insurance: {
+              provider: 'National Health Insurance',
+              policyNumber: 'NH123456789',
+              groupNumber: 'GRP001',
+              type: 'public'
+            }
+          }),
+          model: 'gpt-4o',
+          finishReason: 'stop'
+        };
+
+        // generateCompletionメソッドをスパイしてStructured Outputsが使用されることを確認
+        const generateCompletionSpy = vi.spyOn(service, 'generateCompletion');
+        generateCompletionSpy.mockResolvedValue(expectedStructuredResponse);
+
+        const result = await service.generatePatientPersona(patientParams);
+
+        expect(result).toEqual(expectedStructuredResponse);
+        expect(generateCompletionSpy).toHaveBeenCalledWith({
+          type: 'patient_persona_generation',
+          context: patientParams,
+          systemPrompt: expect.stringContaining('医療シミュレーション'),
+          userPrompt: expect.stringContaining('患者ペルソナ'),
+          responseFormat: {
+            type: 'json_schema',
+            json_schema: {
+              name: 'PatientPersona',
+              strict: true,
+              schema: expect.objectContaining({
+                type: 'object',
+                strict: true,
+                additionalProperties: false,
+                properties: expect.objectContaining({
+                  id: expect.objectContaining({ type: 'string' }),
+                  demographics: expect.objectContaining({ type: 'object' }),
+                  chiefComplaint: expect.objectContaining({ type: 'string' })
+                }),
+                required: expect.arrayContaining(['id', 'scenarioId', 'demographics'])
+              })
+            }
+          }
         });
       });
     });

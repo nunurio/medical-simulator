@@ -5,9 +5,10 @@
 import OpenAI from 'openai';
 import type { LLMRequest, LLMResponse } from '@/types/llm';
 import { LLMRequestSchema, LLMResponseSchema } from '@/types/llm';
-import { getLLMConfig } from '@/config/llm-config';
+import { getLLMConfig, isO3Model as isO3ModelCheck } from '@/config/llm-config';
 import { callOpenAIWithRetry } from '@/lib/retry-logic';
 import { SYSTEM_PROMPTS, USER_PROMPTS } from '@/config/prompt-templates';
+import { PatientPersonaJsonSchema } from '@/types/llm-schemas';
 
 // 特化メソッド用の型定義
 export interface PatientPersonaParams {
@@ -56,6 +57,63 @@ export class LLMService {
     return this.openaiClient;
   }
 
+  /**
+   * OpenAI APIパラメータを構築する
+   * @private
+   */
+  private buildApiParams(
+    validatedRequest: LLMRequest, 
+    config: ReturnType<typeof getLLMConfig>
+  ): OpenAI.Chat.Completions.ChatCompletionCreateParamsNonStreaming {
+    const isO3Model = isO3ModelCheck(config.model);
+    
+    const apiParams: OpenAI.Chat.Completions.ChatCompletionCreateParamsNonStreaming = {
+      model: config.model,
+      messages: [
+        ...(validatedRequest.systemPrompt ? [{ role: 'system' as const, content: validatedRequest.systemPrompt }] : []),
+        { role: 'user' as const, content: validatedRequest.userPrompt }
+      ],
+      temperature: validatedRequest.temperature ?? config.temperature,
+    };
+
+    // トークン数の設定（o3モデルはmax_completion_tokens、他はmax_tokens）
+    const maxTokens = validatedRequest.maxTokens ?? config.maxTokens;
+    if (isO3Model) {
+      // o3モデル用のパラメータ設定
+      (apiParams as unknown).max_completion_tokens = maxTokens;
+    } else {
+      // 通常モデル用のパラメータ設定
+      apiParams.max_tokens = maxTokens;
+    }
+
+    // Structured Outputs対応
+    if (validatedRequest.responseFormat) {
+      apiParams.response_format = validatedRequest.responseFormat;
+    }
+
+    return apiParams;
+  }
+
+  /**
+   * OpenAI APIレスポンスをLLMResponseに変換する
+   * @private
+   */
+  private transformResponse(response: OpenAI.Chat.Completions.ChatCompletion): LLMResponse {
+    const result: LLMResponse = {
+      content: response.choices[0]?.message?.content || '',
+      usage: response.usage ? {
+        promptTokens: response.usage.prompt_tokens,
+        completionTokens: response.usage.completion_tokens,
+        totalTokens: response.usage.total_tokens,
+      } : undefined,
+      model: response.model,
+      finishReason: response.choices[0]?.finish_reason || undefined,
+    };
+
+    // レスポンスのバリデーション
+    return LLMResponseSchema.parse(result);
+  }
+
   async generateCompletion(request: LLMRequest): Promise<LLMResponse> {
     // リクエストのバリデーション
     const validatedRequest = LLMRequestSchema.parse(request);
@@ -65,29 +123,9 @@ export class LLMService {
 
     // OpenAI APIコール用の関数
     const apiCall = async (): Promise<LLMResponse> => {
-      const response = await client.chat.completions.create({
-        model: config.model,
-        messages: [
-          ...(validatedRequest.systemPrompt ? [{ role: 'system' as const, content: validatedRequest.systemPrompt }] : []),
-          { role: 'user' as const, content: validatedRequest.userPrompt }
-        ],
-        temperature: validatedRequest.temperature ?? config.temperature,
-        max_tokens: validatedRequest.maxTokens ?? config.maxTokens,
-      });
-
-      const result: LLMResponse = {
-        content: response.choices[0]?.message?.content || '',
-        usage: response.usage ? {
-          promptTokens: response.usage.prompt_tokens,
-          completionTokens: response.usage.completion_tokens,
-          totalTokens: response.usage.total_tokens,
-        } : undefined,
-        model: response.model,
-        finishReason: response.choices[0]?.finish_reason || undefined,
-      };
-
-      // レスポンスのバリデーション
-      return LLMResponseSchema.parse(result);
+      const apiParams = this.buildApiParams(validatedRequest, config);
+      const response = await client.chat.completions.create(apiParams);
+      return this.transformResponse(response);
     };
 
     // リトライ付きでAPIを実行し、結果のバリデーション
@@ -111,10 +149,18 @@ export class LLMService {
     const userPrompt = USER_PROMPTS.PATIENT_GENERATION(params);
 
     return this.generateCompletion({
-      type: 'patient_generation',
+      type: 'patient_persona_generation',
       context: params,
       systemPrompt,
       userPrompt,
+      responseFormat: {
+        type: 'json_schema',
+        json_schema: {
+          name: 'PatientPersona',
+          strict: true,
+          schema: PatientPersonaJsonSchema
+        }
+      }
     });
   }
 

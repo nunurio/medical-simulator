@@ -14,6 +14,7 @@ import type {
 import type { ISODate } from '../types/core';
 import type { LLMResponse } from '../types/llm';
 import { createPatientId, createScenarioId } from '../types/core';
+import { PatientPersonaJsonSchema } from '../types/llm-schemas';
 
 // 患者ペルソナ生成パラメータのスキーマ
 export const PatientPersonaGenerationParamsSchema = z.object({
@@ -23,9 +24,75 @@ export const PatientPersonaGenerationParamsSchema = z.object({
   mode: z.enum(['outpatient', 'emergency', 'inpatient'] as const),
 });
 
+// Structured Outputs用のレスポンススキーマ（PatientPersonaJsonSchemaと整合）
+const StructuredPatientPersonaResponseSchema = z.object({
+  id: z.string(),
+  scenarioId: z.string(),
+  demographics: z.object({
+    firstName: z.string(),
+    lastName: z.string(),
+    dateOfBirth: z.string(), // ISODate
+    gender: z.string(),
+    bloodType: z.string(),
+    phoneNumber: z.string().optional(),
+    email: z.string().optional(),
+    emergencyContact: z.object({
+      name: z.string(),
+      relationship: z.string(),
+      phoneNumber: z.string(),
+    }).optional(),
+  }),
+  chiefComplaint: z.string(),
+  presentIllness: z.string(),
+  medicalHistory: z.object({
+    conditions: z.array(z.object({
+      condition: z.string(),
+      diagnosedDate: z.string(),
+      status: z.string(),
+    })),
+  }),
+  currentConditions: z.array(z.object({
+    name: z.string(),
+    severity: z.string(),
+    status: z.string(),
+  })),
+  medications: z.array(z.object({
+    name: z.string(),
+    dosage: z.string(),
+    frequency: z.string(),
+    route: z.string(),
+  })),
+  allergies: z.array(z.object({
+    allergen: z.string(),
+    reaction: z.string(),
+    severity: z.string(),
+  })),
+  vitalSigns: z.object({
+    systolicBP: z.number(),
+    diastolicBP: z.number(),
+    heartRate: z.number(),
+    respiratoryRate: z.number(),
+    temperature: z.number(),
+    oxygenSaturation: z.number().optional(),
+  }),
+  socialHistory: z.object({
+    smokingStatus: z.string(),
+    alcoholUse: z.string(),
+    drugUse: z.string(),
+    occupation: z.string().optional(),
+    livingConditions: z.string().optional(),
+  }),
+  insurance: z.object({
+    provider: z.string(),
+    policyNumber: z.string(),
+    groupNumber: z.string().optional(),
+    type: z.string(),
+  }),
+});
+
 export type PatientPersonaGenerationParams = z.infer<typeof PatientPersonaGenerationParamsSchema>;
 
-// LLMレスポンス用のPatientPersonaスキーマ（IDフィールドは後で追加）
+// 旧形式のLLMレスポンス用スキーマ（後方互換性のため保持）
 const PatientPersonaResponseSchema = z.object({
   demographics: z.object({
     age: z.number(),
@@ -113,12 +180,20 @@ export class PatientPersonaGenerator {
     // 診療科・難易度別のコンテキストを構築
     const context = this.buildContext(validatedParams.specialty, validatedParams.difficulty);
 
-    // LLMを使用してペルソナを生成
+    // LLMを使用してペルソナを生成（Structured Outputsを使用）
     const response = await this.llmService.generateCompletion({
       type: 'patient_generation',
       context: { ...validatedParams, ...context },
       systemPrompt: 'You are a medical expert creating realistic patient personas.',
       userPrompt: `Generate a patient persona for ${validatedParams.specialty} specialty, difficulty level: ${validatedParams.difficulty}`,
+      responseFormat: {
+        type: 'json_schema',
+        json_schema: {
+          name: 'PatientPersona',
+          schema: PatientPersonaJsonSchema,
+          strict: true,
+        },
+      },
     });
 
     // レスポンスをパースして患者ペルソナを作成
@@ -207,109 +282,242 @@ export class PatientPersonaGenerator {
 
   /**
    * LLMレスポンスをパースして患者ペルソナを生成
+   * Structured Outputsによる純粋なJSONレスポンスを優先的に処理し、
+   * 旧形式のレスポンスは後方互換性のためにサポート
    * @param response LLMレスポンス
    * @returns パースされた患者ペルソナ
    */
   private parseResponse(response: LLMResponse): PatientPersona {
     try {
-      // レスポンスのクリーニング（マークダウンや余分な文字を削除）
-      let cleanedContent = response.content.trim();
+      // JSON として直接パース（Structured Outputsが純粋なJSONを保証）
+      const jsonContent = JSON.parse(response.content.trim());
       
-      // マークダウンのコードブロックを削除
-      cleanedContent = cleanedContent.replace(/```json\s*/gi, '').replace(/```\s*/gi, '');
+      // まずStructured Outputs形式のバリデーションを試行
+      const structuredValidation = StructuredPatientPersonaResponseSchema.safeParse(jsonContent);
       
-      // 先頭の非JSON文字を削除（例：**Patient...などのマークダウン）
-      const jsonStartIndex = cleanedContent.search(/\{/);
-      if (jsonStartIndex > 0) {
-        cleanedContent = cleanedContent.substring(jsonStartIndex);
-      }
-      
-      // 末尾の非JSON文字を削除
-      const jsonEndIndex = cleanedContent.lastIndexOf('}');
-      if (jsonEndIndex > -1 && jsonEndIndex < cleanedContent.length - 1) {
-        cleanedContent = cleanedContent.substring(0, jsonEndIndex + 1);
-      }
-      
-      // JSONとしてパース
-      const jsonContent = JSON.parse(cleanedContent);
-      
-      // Zodスキーマでバリデーション
-      const validatedResponse = PatientPersonaResponseSchema.parse(jsonContent);
-      
-      // PatientPersona形式に変換（IDを追加）
-      // LLMレスポンスのnameを firstName/lastName に分割
-      const nameParts = validatedResponse.demographics.name.split(' ');
-      const firstName = nameParts[0] || 'Unknown';
-      const lastName = nameParts.slice(1).join(' ') || '';
-      
-      // ageからdateOfBirthを計算
-      const currentYear = new Date().getFullYear();
-      const birthYear = currentYear - validatedResponse.demographics.age;
-      const dateOfBirth = `${birthYear}-01-01` as ISODate;
-
-      const patientPersona: PatientPersona = {
-        id: createPatientId(''),
-        scenarioId: createScenarioId(''),
-        demographics: {
-          firstName,
-          lastName,
-          dateOfBirth,
-          gender: validatedResponse.demographics.gender,
-          bloodType: (validatedResponse.demographics.bloodType || 'O+') as 'A+' | 'A-' | 'B+' | 'B-' | 'AB+' | 'AB-' | 'O+' | 'O-',
-        },
-        chiefComplaint: validatedResponse.medicalHistory.chiefComplaint || '',
-        presentIllness: '', // LLMから生成されない場合は空文字
-        medicalHistory: {
-          surgicalHistory: [],
-          familyHistory: (validatedResponse.medicalHistory.familyHistory || []) as FamilyHistoryItem[],
-          pastIllnesses: (validatedResponse.medicalHistory.pastIllnesses || []) as PastIllness[],
-          hospitalizations: (validatedResponse.medicalHistory.hospitalizations || []) as Hospitalization[],
-        },
-        currentConditions: (validatedResponse.medicalHistory.currentConditions || []) as Condition[],
-        medications: (validatedResponse.medicalHistory.currentMedications || []) as CurrentMedication[],
-        allergies: (validatedResponse.medicalHistory.allergies || []) as Allergy[],
-        vitalSigns: {
-          baseline: {
-            bloodPressure: { systolic: 120, diastolic: 80, unit: 'mmHg' as const },
-            heartRate: { value: 72, unit: 'bpm' as const },
-            temperature: { value: 36.5, unit: 'celsius' as const },
-            respiratoryRate: { value: 16, unit: 'breaths/min' as const },
-            oxygenSaturation: { value: 98, unit: '%' as const },
-            recordedAt: new Date().toISOString() as import('../types/core').ISODateTime,
+      if (structuredValidation.success) {
+        // Structured Outputs形式の場合、そのまま使用
+        const validatedResponse = structuredValidation.data;
+        
+        return {
+          id: createPatientId(validatedResponse.id || ''),
+          scenarioId: createScenarioId(validatedResponse.scenarioId || ''),
+          demographics: {
+            firstName: validatedResponse.demographics.firstName,
+            lastName: validatedResponse.demographics.lastName,
+            dateOfBirth: validatedResponse.demographics.dateOfBirth as ISODate,
+            gender: validatedResponse.demographics.gender,
+            bloodType: validatedResponse.demographics.bloodType as 'A+' | 'A-' | 'B+' | 'B-' | 'AB+' | 'AB-' | 'O+' | 'O-',
           },
-          trend: 'stable' as const,
-          criticalValues: {
-            isHypotensive: false,
-            isHypertensive: false,
-            isTachycardic: false,
-            isBradycardic: false,
-            isFebrile: false,
-            isHypoxic: false,
-          }
-        },
-        socialHistory: {},
-        insurance: {
-          provider: 'Unknown',
-          policyNumber: '',
-          validUntil: new Date(new Date().getFullYear() + 1, 11, 31).toISOString().split('T')[0] as ISODate,
-        },
-      };
+          chiefComplaint: validatedResponse.chiefComplaint,
+          presentIllness: validatedResponse.presentIllness,
+          medicalHistory: {
+            surgicalHistory: [],
+            familyHistory: [], // TODO: Structured Outputsスキーマに追加時にマッピング
+            pastIllnesses: validatedResponse.medicalHistory.conditions.map(c => ({
+              condition: c.condition,
+              diagnosisDate: c.diagnosedDate as ISODate,
+              status: c.status as 'active' | 'inactive' | 'chronic' | 'resolved',
+              severity: 'mild' as const,
+            })),
+            hospitalizations: [], // TODO: Structured Outputsスキーマに追加時にマッピング
+          },
+          currentConditions: validatedResponse.currentConditions.map(c => ({
+            code: '', // TODO: コード化が必要な場合
+            name: c.name,
+            severity: c.severity as 'mild' | 'moderate' | 'severe',
+            status: c.status as 'active' | 'stable' | 'improving' | 'worsening',
+            onset: new Date().toISOString() as import('../types/core').ISODateTime,
+          })),
+          medications: validatedResponse.medications.map(m => ({
+            name: m.name,
+            dosage: parseFloat(m.dosage) || 0,
+            unit: m.dosage.replace(/[0-9.]/g, '') || 'mg',
+            frequency: m.frequency as 'once_daily' | 'twice_daily' | 'three_times_daily' | 'four_times_daily' | 'as_needed',
+            route: m.route as 'oral' | 'intravenous' | 'intramuscular' | 'subcutaneous' | 'topical' | 'inhaled',
+            startDate: new Date().toISOString().split('T')[0] as ISODate,
+            prescribedBy: 'Unknown',
+            notes: '',
+          })),
+          allergies: validatedResponse.allergies.map(a => ({
+            allergen: a.allergen,
+            reaction: a.reaction,
+            severity: a.severity as 'mild' | 'moderate' | 'severe',
+            onset: 'unknown' as const,
+            notes: '',
+          })),
+          vitalSigns: {
+            baseline: {
+              bloodPressure: { 
+                systolic: validatedResponse.vitalSigns.systolicBP, 
+                diastolic: validatedResponse.vitalSigns.diastolicBP, 
+                unit: 'mmHg' as const 
+              },
+              heartRate: { 
+                value: validatedResponse.vitalSigns.heartRate, 
+                unit: 'bpm' as const 
+              },
+              temperature: { 
+                value: validatedResponse.vitalSigns.temperature, 
+                unit: 'celsius' as const 
+              },
+              respiratoryRate: { 
+                value: validatedResponse.vitalSigns.respiratoryRate, 
+                unit: 'breaths/min' as const 
+              },
+              oxygenSaturation: { 
+                value: validatedResponse.vitalSigns.oxygenSaturation || 98, 
+                unit: '%' as const 
+              },
+              recordedAt: new Date().toISOString() as import('../types/core').ISODateTime,
+            },
+            trend: 'stable' as const,
+            criticalValues: {
+              isHypotensive: validatedResponse.vitalSigns.systolicBP < 90,
+              isHypertensive: validatedResponse.vitalSigns.systolicBP > 140,
+              isTachycardic: validatedResponse.vitalSigns.heartRate > 100,
+              isBradycardic: validatedResponse.vitalSigns.heartRate < 60,
+              isFebrile: validatedResponse.vitalSigns.temperature > 37.5,
+              isHypoxic: (validatedResponse.vitalSigns.oxygenSaturation || 98) < 95,
+            }
+          },
+          socialHistory: {
+            smokingHistory: {
+              status: validatedResponse.socialHistory.smokingStatus as 'never' | 'former' | 'current',
+              packsPerDay: 0,
+              years: 0,
+            },
+            alcoholHistory: {
+              frequency: validatedResponse.socialHistory.alcoholUse as 'never' | 'occasional' | 'weekly' | 'daily',
+              amount: 0,
+              type: '',
+            },
+            drugHistory: {
+              status: validatedResponse.socialHistory.drugUse as 'never' | 'former' | 'current',
+              substances: [],
+            },
+            occupation: validatedResponse.socialHistory.occupation || '',
+            livingConditions: validatedResponse.socialHistory.livingConditions || '',
+          },
+          insurance: {
+            provider: validatedResponse.insurance.provider,
+            policyNumber: validatedResponse.insurance.policyNumber,
+            validUntil: new Date(new Date().getFullYear() + 1, 11, 31).toISOString().split('T')[0] as ISODate,
+          },
+        };
+      } else {
+        // 旧形式のレスポンスの場合、既存のパース処理を実行
+        return this.parseResponseLegacy(response, jsonContent);
+      }
       
-      return patientPersona;
     } catch (error) {
       if (error instanceof SyntaxError) {
-        console.error('JSON parse error. Original content:', response.content);
-        console.error('Cleaned content:', cleanedContent);
+        console.error('JSON parse error. Response content:', response.content);
         throw new Error(`Invalid JSON in LLM response: ${error.message}`);
       } else if (error instanceof z.ZodError) {
         console.error('Zod validation error:', error.issues);
-        console.error('JSON content:', jsonContent);
         throw new Error(`Invalid patient persona structure: ${error.issues.map((e: z.ZodIssue) => e.message).join(', ')}`);
       } else {
         console.error('Unexpected error:', error);
         throw new Error(`Failed to parse LLM response: ${error instanceof Error ? error.message : 'Unknown error'}`);
       }
     }
+  }
+
+  /**
+   * 旧形式のLLMレスポンスをパース（後方互換性のため）
+   * @param response LLMレスポンス
+   * @param jsonContent パースされたJSONコンテンツ
+   * @returns パースされた患者ペルソナ
+   */
+  private parseResponseLegacy(response: LLMResponse, jsonContent: any): PatientPersona {
+    // レスポンスのクリーニング（マークダウンや余分な文字を削除）
+    let cleanedContent = response.content.trim();
+    
+    // マークダウンのコードブロックを削除
+    cleanedContent = cleanedContent.replace(/```json\s*/gi, '').replace(/```\s*/gi, '');
+    
+    // 先頭の非JSON文字を削除（例：**Patient...などのマークダウン）
+    const jsonStartIndex = cleanedContent.search(/\{/);
+    if (jsonStartIndex > 0) {
+      cleanedContent = cleanedContent.substring(jsonStartIndex);
+    }
+    
+    // 末尾の非JSON文字を削除
+    const jsonEndIndex = cleanedContent.lastIndexOf('}');
+    if (jsonEndIndex > -1 && jsonEndIndex < cleanedContent.length - 1) {
+      cleanedContent = cleanedContent.substring(0, jsonEndIndex + 1);
+    }
+    
+    // JSONとしてパース（必要に応じて再パース）
+    let parsedContent = jsonContent;
+    if (typeof jsonContent === 'string') {
+      parsedContent = JSON.parse(cleanedContent);
+    }
+    
+    // Zodスキーマでバリデーション
+    const validatedResponse = PatientPersonaResponseSchema.parse(parsedContent);
+    
+    // PatientPersona形式に変換（IDを追加）
+    // LLMレスポンスのnameを firstName/lastName に分割
+    const nameParts = validatedResponse.demographics.name.split(' ');
+    const firstName = nameParts[0] || 'Unknown';
+    const lastName = nameParts.slice(1).join(' ') || '';
+    
+    // ageからdateOfBirthを計算
+    const currentYear = new Date().getFullYear();
+    const birthYear = currentYear - validatedResponse.demographics.age;
+    const dateOfBirth = `${birthYear}-01-01` as ISODate;
+
+    const patientPersona: PatientPersona = {
+      id: createPatientId(''),
+      scenarioId: createScenarioId(''),
+      demographics: {
+        firstName,
+        lastName,
+        dateOfBirth,
+        gender: validatedResponse.demographics.gender,
+        bloodType: (validatedResponse.demographics.bloodType || 'O+') as 'A+' | 'A-' | 'B+' | 'B-' | 'AB+' | 'AB-' | 'O+' | 'O-',
+      },
+      chiefComplaint: validatedResponse.medicalHistory.chiefComplaint || '',
+      presentIllness: '', // LLMから生成されない場合は空文字
+      medicalHistory: {
+        surgicalHistory: [],
+        familyHistory: (validatedResponse.medicalHistory.familyHistory || []) as FamilyHistoryItem[],
+        pastIllnesses: (validatedResponse.medicalHistory.pastIllnesses || []) as PastIllness[],
+        hospitalizations: (validatedResponse.medicalHistory.hospitalizations || []) as Hospitalization[],
+      },
+      currentConditions: (validatedResponse.medicalHistory.currentConditions || []) as Condition[],
+      medications: (validatedResponse.medicalHistory.currentMedications || []) as CurrentMedication[],
+      allergies: (validatedResponse.medicalHistory.allergies || []) as Allergy[],
+      vitalSigns: {
+        baseline: {
+          bloodPressure: { systolic: 120, diastolic: 80, unit: 'mmHg' as const },
+          heartRate: { value: 72, unit: 'bpm' as const },
+          temperature: { value: 36.5, unit: 'celsius' as const },
+          respiratoryRate: { value: 16, unit: 'breaths/min' as const },
+          oxygenSaturation: { value: 98, unit: '%' as const },
+          recordedAt: new Date().toISOString() as import('../types/core').ISODateTime,
+        },
+        trend: 'stable' as const,
+        criticalValues: {
+          isHypotensive: false,
+          isHypertensive: false,
+          isTachycardic: false,
+          isBradycardic: false,
+          isFebrile: false,
+          isHypoxic: false,
+        }
+      },
+      socialHistory: {},
+      insurance: {
+        provider: 'Unknown',
+        policyNumber: '',
+        validUntil: new Date(new Date().getFullYear() + 1, 11, 31).toISOString().split('T')[0] as ISODate,
+      },
+    };
+    
+    return patientPersona;
   }
 
   /**

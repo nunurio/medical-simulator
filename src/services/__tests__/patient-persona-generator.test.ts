@@ -103,6 +103,91 @@ describe('PatientPersonaGenerator', () => {
         } as Parameters<typeof generator.generatePersona>[0])
       ).rejects.toThrow();
     });
+
+    it('Structured Outputsを使用してPatientPersonaJsonSchemaでJSON形式を指定する', async () => {
+      // Arrange: Structured Outputsに対応したモックレスポンス
+      const structuredOutputsResponse: LLMResponse = {
+        content: JSON.stringify({
+          id: 'patient-001',
+          scenarioId: 'scenario-001',
+          demographics: {
+            firstName: '構造化太郎',
+            lastName: '出力',
+            dateOfBirth: '1980-01-01',
+            gender: 'male',
+            bloodType: 'A+',
+          },
+          chiefComplaint: 'Structured Outputsによる胸痛',
+          presentIllness: '3日前から続く胸痛',
+          medicalHistory: {
+            conditions: [
+              { condition: '高血圧', diagnosedDate: '2020-01-01', status: 'active' }
+            ],
+          },
+          currentConditions: [
+            { name: '狭心症疑い', severity: 'moderate', status: 'suspected' }
+          ],
+          medications: [
+            { name: 'アスピリン', dosage: '100mg', frequency: 'once daily', route: 'oral' }
+          ],
+          allergies: [
+            { allergen: 'ペニシリン', reaction: '発疹', severity: 'mild' }
+          ],
+          vitalSigns: {
+            systolicBP: 140,
+            diastolicBP: 90,
+            heartRate: 80,
+            respiratoryRate: 16,
+            temperature: 36.5,
+            oxygenSaturation: 98,
+          },
+          socialHistory: {
+            smokingStatus: 'former',
+            alcoholUse: 'occasional',
+            drugUse: 'none',
+          },
+          insurance: {
+            provider: '国民健康保険',
+            policyNumber: 'NHI-12345',
+            type: 'public',
+          },
+        }),
+        model: 'gpt-4',
+        usage: {
+          promptTokens: 200,
+          completionTokens: 300,
+          totalTokens: 500,
+        },
+      };
+
+      mockLLMServiceInstance.generateCompletion.mockResolvedValue(structuredOutputsResponse);
+
+      // Act: 患者ペルソナを生成
+      const result = await generator.generatePersona({
+        specialty: 'cardiology',
+        difficulty: 'intermediate',
+        mode: 'outpatient',
+      });
+
+      // Assert: Structured Outputsを指定した呼び出しが行われる
+      expect(mockLLMServiceInstance.generateCompletion).toHaveBeenCalledWith(
+        expect.objectContaining({
+          responseFormat: {
+            type: 'json_schema',
+            json_schema: {
+              name: 'PatientPersona',
+              schema: expect.any(Object),
+              strict: true,
+            },
+          },
+        })
+      );
+
+      // 正しい結果が返される
+      expect(result.demographics.firstName).toBe('構造化太郎');
+      expect(result.demographics.lastName).toBe('出力');
+      expect(result.chiefComplaint).toBe('Structured Outputsによる胸痛');
+    });
   });
 
   describe('buildContext (private method test via generatePersona)', () => {
@@ -352,6 +437,91 @@ describe('PatientPersonaGenerator', () => {
           specialty: 'cardiology', difficulty: 'beginner', mode: 'outpatient',
         })
       ).rejects.toThrow();
+    });
+
+    it('Structured Outputsによる純粋なJSONレスポンスを簡素化されたparseResponseで処理する', async () => {
+      // Arrange: Structured Outputsが保証する純粋なJSONレスポンス（マークダウンクリーニング不要）
+      const pureJsonResponse: LLMResponse = {
+        content: JSON.stringify({
+          demographics: {
+            age: 38,
+            gender: 'female' as Gender,
+            name: 'JSON純子',
+            bloodType: 'O+',
+          },
+          medicalHistory: {
+            chiefComplaint: 'クリーンな頭痛',
+            currentConditions: [],
+            pastIllnesses: [],
+            surgeries: [],
+            hospitalizations: [],
+            allergies: [],
+            currentMedications: [],
+            familyHistory: [],
+            socialHistory: {
+              smokingHistory: { status: 'never', packsPerDay: 0, years: 0 },
+              alcoholHistory: { frequency: 'never', amount: 0, type: '' },
+              exerciseHistory: { frequency: 'regular', type: 'yoga', duration: 60 },
+            },
+          },
+          vitalSigns: {
+            temperature: { value: 36.8, unit: 'celsius', timestamp: new Date().toISOString() },
+            bloodPressure: { systolic: 118, diastolic: 78, timestamp: new Date().toISOString() },
+            heartRate: { value: 70, rhythm: 'regular', timestamp: new Date().toISOString() },
+            respiratoryRate: { value: 16, pattern: 'regular', timestamp: new Date().toISOString() },
+            oxygenSaturation: { value: 99, onRoomAir: true, timestamp: new Date().toISOString() },
+          },
+        }),
+        model: 'gpt-4',
+        usage: {
+          promptTokens: 130,
+          completionTokens: 220,
+          totalTokens: 350,
+        },
+      };
+
+      mockLLMServiceInstance.generateCompletion.mockResolvedValue(pureJsonResponse);
+
+      // Act: Structured Outputsの純粋なJSONを処理
+      const result = await generator.generatePersona({
+        specialty: 'neurology', difficulty: 'intermediate', mode: 'outpatient',
+      });
+
+      // Assert: マークダウン削除処理なしで正しくパースされる
+      expect(result.demographics.firstName).toBe('JSON純子');
+      expect(result.demographics.lastName).toBe('');
+      expect(result.demographics.dateOfBirth).toBe('1987-01-01');
+      expect(result.chiefComplaint).toBe('クリーンな頭痛');
+    });
+
+    it('Structured OutputsによるJSON形式でバリデーション失敗時のエラーハンドリング', async () => {
+      // Arrange: Zodバリデーション失敗用の不正なJSONレスポンス
+      const invalidStructuredResponse: LLMResponse = {
+        content: JSON.stringify({
+          demographics: {
+            age: 'invalid_age', // 数値であるべき
+            gender: 'female' as Gender,
+            name: 'バリデ子',
+            bloodType: 'Z+', // 無効な血液型
+          },
+          // その他の必須フィールドは省略（バリデーション失敗を誘発）
+        }),
+        model: 'gpt-4',
+        usage: {
+          promptTokens: 50,
+          completionTokens: 30,
+          totalTokens: 80,
+        },
+      };
+
+      mockLLMServiceInstance.generateCompletion.mockResolvedValue(invalidStructuredResponse);
+
+      // Act & Assert: Zodバリデーションエラーが発生する
+      await expect(
+        generator.generatePersona({
+          specialty: 'general_medicine', difficulty: 'beginner', mode: 'outpatient',
+        })
+      ).rejects.toThrow(/Invalid patient persona structure/);
     });
   });
 
