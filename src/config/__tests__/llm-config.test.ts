@@ -74,9 +74,10 @@ describe('LLM Config', () => {
       
       expect(config).toEqual({
         apiKey: 'sk-proj-test123',
-        model: 'gpt-4o',
+        model: 'o3-2025-04-16',
         temperature: 0.7,
         maxTokens: 2000,
+        maxCompletionTokens: 4096,
         retries: {
           maxAttempts: 3,
           initialDelay: 1000,

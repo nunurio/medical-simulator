@@ -83,12 +83,14 @@ describe('ChatStore', () => {
       const encounterId = createEncounterId('encounter-001');
       const conversationId = store.createConversation(encounterId);
       
+      const fixedTimestamp = createISODateTime('2024-01-01T12:00:00Z');
+      
       const message1: PatientMessage = {
         id: 'msg-001',
         messageType: 'patient',
         encounterId,
         content: 'こんにちは',
-        timestamp: createISODateTime(new Date().toISOString()),
+        timestamp: fixedTimestamp,
       };
       
       const message2: SimulatorMessage = {
@@ -96,7 +98,7 @@ describe('ChatStore', () => {
         messageType: 'simulator',
         encounterId,
         content: 'こんにちは。今日はどのような症状でいらっしゃいましたか？',
-        timestamp: createISODateTime(new Date().toISOString()),
+        timestamp: fixedTimestamp,
       };
       
       store.addMessage(conversationId, message1);

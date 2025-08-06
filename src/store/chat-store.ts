@@ -44,10 +44,7 @@ export const useChatStore = create<ChatStore>()(
       set((state) => {
         const conversation = state.conversations[conversationId];
         if (conversation) {
-          conversation.messages.push({
-            ...message,
-            timestamp: createISODateTime(new Date().toISOString()),
-          });
+          conversation.messages.push(message);
           conversation.lastActivityAt = createISODateTime(new Date().toISOString());
         }
       });

@@ -59,10 +59,29 @@ describe('useChat', () => {
     const useStoreModule = await import('../use-store');
     const sendChatMessageModule = await import('../../app/actions/send-chat-message');
     
+    // useStoreはフラットな構造を返す必要がある
     vi.mocked(useStoreModule.useStore).mockReturnValue({
-      chat: mockChatStore,
-      patient: mockPatientStore,
-      ui: mockUIStore,
+      // ChatStore properties
+      conversations: mockChatStore.conversations,
+      activeConversationId: mockChatStore.activeConversationId,
+      isTyping: mockChatStore.isTyping,
+      addMessage: mockChatStore.addMessage,
+      setTyping: mockChatStore.setTyping,
+      createConversation: mockChatStore.createConversation,
+      endConversation: mockChatStore.endConversation,
+      setActiveConversation: mockChatStore.setActiveConversation,
+      sendMessage: mockChatStore.sendMessage,
+      removeMessage: mockChatStore.removeMessage,
+      
+      // PatientStore properties
+      patients: mockPatientStore.patients,
+      activePatientId: mockPatientStore.activePatientId,
+      
+      // UIStore properties
+      isLoading: mockUIStore.isLoading,
+      error: mockUIStore.error,
+      setLoading: mockUIStore.setLoading,
+      setError: mockUIStore.setError,
     });
     
     // Server Actionのモックも設定
@@ -111,7 +130,32 @@ describe('useChat', () => {
     });
 
     it('アクティブな会話がない場合はエラーを投げる', async () => {
-      mockChatStore.activeConversationId = null;
+      const localMockChatStore = { ...mockChatStore, activeConversationId: null };
+      
+      const useStoreModule = await import('../use-store');
+      vi.mocked(useStoreModule.useStore).mockReturnValue({
+        // ChatStore properties
+        conversations: localMockChatStore.conversations,
+        activeConversationId: localMockChatStore.activeConversationId,
+        isTyping: localMockChatStore.isTyping,
+        addMessage: localMockChatStore.addMessage,
+        setTyping: localMockChatStore.setTyping,
+        createConversation: localMockChatStore.createConversation,
+        endConversation: localMockChatStore.endConversation,
+        setActiveConversation: localMockChatStore.setActiveConversation,
+        sendMessage: localMockChatStore.sendMessage,
+        removeMessage: localMockChatStore.removeMessage,
+        
+        // PatientStore properties
+        patients: mockPatientStore.patients,
+        activePatientId: mockPatientStore.activePatientId,
+        
+        // UIStore properties
+        isLoading: mockUIStore.isLoading,
+        error: mockUIStore.error,
+        setLoading: mockUIStore.setLoading,
+        setError: mockUIStore.setError,
+      });
 
       const { result } = renderHook(() => useChat());
 
@@ -129,9 +173,27 @@ describe('useChat', () => {
       
       const useStoreModule = await import('../use-store');
       vi.mocked(useStoreModule.useStore).mockReturnValue({
-        chat: localMockChatStore,
-        patient: localMockPatientStore,
-        ui: mockUIStore,
+        // ChatStore properties
+        conversations: localMockChatStore.conversations,
+        activeConversationId: localMockChatStore.activeConversationId,
+        isTyping: localMockChatStore.isTyping,
+        addMessage: localMockChatStore.addMessage,
+        setTyping: localMockChatStore.setTyping,
+        createConversation: localMockChatStore.createConversation,
+        endConversation: localMockChatStore.endConversation,
+        setActiveConversation: localMockChatStore.setActiveConversation,
+        sendMessage: localMockChatStore.sendMessage,
+        removeMessage: localMockChatStore.removeMessage,
+        
+        // PatientStore properties
+        patients: localMockPatientStore.patients,
+        activePatientId: localMockPatientStore.activePatientId,
+        
+        // UIStore properties
+        isLoading: mockUIStore.isLoading,
+        error: mockUIStore.error,
+        setLoading: mockUIStore.setLoading,
+        setError: mockUIStore.setError,
       });
 
       const { result } = renderHook(() => useChat());

@@ -56,8 +56,8 @@ describe('SimulationLayout', () => {
     const mockPatient = {
       id: 'patient-1',
       demographics: {
-        name: '田中太郎',
-        age: 45,
+        firstName: '太郎',
+        lastName: '田中',
         gender: 'male' as const,
         dateOfBirth: '1978-01-01' as const,
       },
@@ -67,11 +67,11 @@ describe('SimulationLayout', () => {
       ],
       vitalSigns: {
         baseline: {
-          bloodPressure: { systolic: 140, diastolic: 90 },
-          heartRate: 80,
-          temperature: 36.5,
-          respiratoryRate: 16,
-          oxygenSaturation: 98
+          bloodPressure: { systolic: 140, diastolic: 90, unit: 'mmHg' as const },
+          heartRate: { value: 80, unit: 'bpm' as const },
+          temperature: { value: 36.5, unit: 'celsius' as const },
+          respiratoryRate: { value: 16, unit: 'breaths/min' as const },
+          oxygenSaturation: { value: 98, unit: '%' as const }
         }
       }
     }
@@ -88,8 +88,8 @@ describe('SimulationLayout', () => {
       </SimulationLayout>
     )
 
-    expect(screen.getByText('田中太郎')).toBeInTheDocument()
-    expect(screen.getByText('45歳 男性')).toBeInTheDocument()
+    expect(screen.getByText('太郎 田中')).toBeInTheDocument()
+    expect(screen.getByText(/47歳.*男性/)).toBeInTheDocument()
     expect(screen.getByText('胸痛')).toBeInTheDocument()
     expect(screen.getByText('高血圧')).toBeInTheDocument()
     expect(screen.getByText(/140.*90.*mmHg/)).toBeInTheDocument()

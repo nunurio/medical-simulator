@@ -170,24 +170,17 @@ describe('sendChatMessage Server Action', () => {
       expect(mockLLMService.generateChatResponse).toHaveBeenCalledWith(
         'どのような症状がありますか？',
         expect.objectContaining({
-          patient: expect.objectContaining({
-            demographics: expect.objectContaining({
-              name: 'Test Patient',
-              age: 30,
-              gender: 'male',
-            }),
-            currentConditions: expect.arrayContaining([
-              expect.objectContaining({
-                name: '胸痛',
-              }),
-            ]),
-          }),
+          patientId: 'patient-1',
+          diagnosis: '胸痛',
+          condition: undefined,
+          age: new Date().getFullYear() - 1994,
           conversationHistory: expect.arrayContaining([
             expect.objectContaining({
               content: 'こんにちは',
               sender: 'provider',
             }),
           ]),
+          encounterId: 'encounter-1',
         })
       );
     });
@@ -216,9 +209,9 @@ describe('sendChatMessage Server Action', () => {
 
       const contextArg = mockLLMService.generateChatResponse.mock.calls[0][1];
       
-      expect(contextArg.patient.demographics.name).toBe('Test Patient');
-      expect(contextArg.patient.demographics.age).toBe(30);
-      expect(contextArg.patient.demographics.gender).toBe('male');
+      expect(contextArg.patientId).toBe('patient-1');
+      expect(contextArg.age).toBe(new Date().getFullYear() - 1994);
+      expect(contextArg.diagnosis).toBe('胸痛');
     });
 
     it('患者の症状・既往歴を含むコンテキストを構築する', async () => {
@@ -230,9 +223,9 @@ describe('sendChatMessage Server Action', () => {
 
       const contextArg = mockLLMService.generateChatResponse.mock.calls[0][1];
       
-      expect(contextArg.patient.currentConditions).toHaveLength(1);
-      expect(contextArg.patient.currentConditions[0].name).toBe('胸痛');
-      expect(contextArg.patient.vitalSigns.baseline.heartRate).toBe(75);
+      expect(contextArg.diagnosis).toBe('胸痛');
+      expect(contextArg.encounterId).toBe('encounter-1');
+      expect(contextArg.patientId).toBe('patient-1');
     });
 
     it('会話履歴を含むコンテキストを構築する', async () => {
