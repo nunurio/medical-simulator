@@ -85,7 +85,7 @@ export class LLMService {
     const maxTokens = validatedRequest.maxTokens ?? config.maxTokens;
     if (isO3Model) {
       // o3モデル用のパラメータ設定
-      (apiParams as unknown).max_completion_tokens = maxTokens;
+      (apiParams as OpenAI.Chat.Completions.ChatCompletionCreateParamsNonStreaming & { max_completion_tokens?: number }).max_completion_tokens = maxTokens;
     } else {
       // 通常モデル用のパラメータ設定
       apiParams.max_tokens = maxTokens;

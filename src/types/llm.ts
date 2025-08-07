@@ -54,7 +54,7 @@ export const ResponseFormatSchema = z.object({
        
       properties: z.record(z.string(), z.object({
         type: z.string()
-      }).passthrough() as unknown),
+      }).passthrough()),
       required: z.array(z.string()),
       additionalProperties: z.literal(false)
     })

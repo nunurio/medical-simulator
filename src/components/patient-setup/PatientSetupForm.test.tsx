@@ -142,7 +142,7 @@ describe('PatientSetupForm', () => {
     
     // Server Actionを遅延させる
     mockGeneratePatientAction.mockImplementation(
-      () => new Promise(resolve => setTimeout(() => resolve({ success: true, data: {} }), 100))
+      () => new Promise(resolve => setTimeout(() => resolve({ success: true, data: undefined }), 100))
     )
     
     render(<PatientSetupForm />)

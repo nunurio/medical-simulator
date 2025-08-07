@@ -73,6 +73,26 @@ export interface ChatStore {
   createConversation: (encounterId: EncounterId) => string;
   endConversation: (conversationId: string) => void;
   setActiveConversation: (id: string) => void;
+  
+  // History management
+  archiveOldConversations: (olderThanMs: number) => void;
+  searchConversations: (query: string) => Array<{ conversationId: string; messages: ChatMessage[] }>;
+  
+  // Context management
+  updateConversationContext: (conversationId: string, context: any) => void;
+  
+  // Message status management
+  updateMessageStatus: (conversationId: string, messageId: string, status: string) => void;
+  confirmMessageDelivery: (conversationId: string, messageId: string, deliveryTime: string) => void;
+  retryMessage: (conversationId: string, messageId: string) => void;
+  
+  // Real-time communication and typing state
+  setParticipantTyping: (conversationId: string, participant: string, isTyping: boolean) => void;
+  cleanupStaleTypingStates: (timeoutMs: number) => void;
+  
+  // Session management
+  getSessionData: () => any;
+  restoreSessionData: (sessionData: any) => void;
 }
 
 // Order store slice

@@ -12,6 +12,7 @@ export interface JsonSchemaProperty {
   items?: JsonSchemaProperty;
   required?: string[];
   additionalProperties?: boolean;
+  [key: string]: unknown;
 }
 
 export interface JsonSchema {
@@ -19,7 +20,7 @@ export interface JsonSchema {
   properties: Record<string, JsonSchemaProperty>;
   required: string[];
   additionalProperties: false;
-  strict: true;
+  strict?: true;
 }
 
 /**
@@ -54,7 +55,7 @@ export function convertZodSchemaToJsonSchema(_zodSchema: z.ZodType): JsonSchema 
  */
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 function convertZodPropertyToJsonSchemaProperty(zodProperty: z.ZodType): JsonSchemaProperty {
-  const zodDef = (zodProperty as unknown)._def;
+  const zodDef = (zodProperty as z.ZodType & { _def?: { typeName?: string; type?: z.ZodType; innerType?: z.ZodType; valueType?: z.ZodType; shape?: () => Record<string, z.ZodType> } })._def;
   
   switch (zodDef?.typeName) {
     case 'ZodString':

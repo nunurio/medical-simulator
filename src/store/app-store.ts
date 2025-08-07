@@ -138,6 +138,51 @@ export const useAppStore = create<AppState>()(
       useChatStore.getState().endConversation(conversationId);
     },
     
+    // ChatStore History management
+    archiveOldConversations: (olderThanMs) => {
+      useChatStore.getState().archiveOldConversations(olderThanMs);
+    },
+    
+    searchConversations: (query) => {
+      return useChatStore.getState().searchConversations(query);
+    },
+    
+    // ChatStore Context management
+    updateConversationContext: (conversationId, context) => {
+      useChatStore.getState().updateConversationContext(conversationId, context);
+    },
+    
+    // ChatStore Message status management
+    updateMessageStatus: (conversationId, messageId, status) => {
+      useChatStore.getState().updateMessageStatus(conversationId, messageId, status);
+    },
+    
+    confirmMessageDelivery: (conversationId, messageId, deliveryTime) => {
+      useChatStore.getState().confirmMessageDelivery(conversationId, messageId, deliveryTime);
+    },
+    
+    retryMessage: (conversationId, messageId) => {
+      useChatStore.getState().retryMessage(conversationId, messageId);
+    },
+    
+    // ChatStore Real-time communication
+    setParticipantTyping: (conversationId, participant, isTyping) => {
+      useChatStore.getState().setParticipantTyping(conversationId, participant, isTyping);
+    },
+    
+    cleanupStaleTypingStates: (timeoutMs) => {
+      useChatStore.getState().cleanupStaleTypingStates(timeoutMs);
+    },
+    
+    // ChatStore Session management
+    getSessionData: () => {
+      return useChatStore.getState().getSessionData();
+    },
+    
+    restoreSessionData: (sessionData) => {
+      useChatStore.getState().restoreSessionData(sessionData);
+    },
+    
     // OrderStore Actions
     createOrder: (order) => {
       useOrderStore.getState().createOrder(order);
@@ -544,6 +589,156 @@ export const createAppStore = () => {
           if (conversation) {
             conversation.status = 'completed';
             conversation.endedAt = createISODateTime(new Date().toISOString());
+          }
+        });
+      },
+      
+      // ChatStore History management
+      archiveOldConversations: (olderThanMs) => {
+        set((state) => {
+          const now = Date.now();
+          Object.values(state.conversations).forEach(conversation => {
+            if (conversation.status === 'completed' && conversation.endedAt) {
+              const endTime = new Date(conversation.endedAt).getTime();
+              if (now - endTime >= olderThanMs) {
+                conversation.status = 'archived';
+              }
+            }
+          });
+        });
+      },
+      
+      searchConversations: (query) => {
+        const state = get();
+        const results: Array<{ conversationId: string; messages: import('@/types/chat').ChatMessage[] }> = [];
+        
+        Object.entries(state.conversations).forEach(([conversationId, conversation]) => {
+          const matchingMessages = conversation.messages.filter(message => 
+            'content' in message && message.content.includes(query)
+          );
+          if (matchingMessages.length > 0) {
+            results.push({ conversationId, messages: matchingMessages });
+          }
+        });
+        
+        return results;
+      },
+      
+      // ChatStore Context management
+      updateConversationContext: (conversationId, context) => {
+        set((state) => {
+          const conversation = state.conversations[conversationId];
+          if (conversation) {
+            if (!conversation.context) {
+              conversation.context = {};
+            }
+            conversation.context = {
+              ...conversation.context,
+              ...context,
+              metadata: {
+                ...conversation.context.metadata,
+                ...context.metadata
+              }
+            };
+          }
+        });
+      },
+      
+      // ChatStore Message status management
+      updateMessageStatus: (conversationId, messageId, status) => {
+        set((state) => {
+          const conversation = state.conversations[conversationId];
+          if (conversation) {
+            const message = conversation.messages.find(m => m.id === messageId);
+            if (message) {
+              message.status = status as 'sending' | 'sent' | 'delivered' | 'failed';
+            }
+          }
+        });
+      },
+      
+      confirmMessageDelivery: (conversationId, messageId, deliveryTime) => {
+        set((state) => {
+          const conversation = state.conversations[conversationId];
+          if (conversation) {
+            const message = conversation.messages.find(m => m.id === messageId);
+            if (message) {
+              message.status = 'delivered';
+              message.deliveredAt = deliveryTime;
+            }
+          }
+        });
+      },
+      
+      retryMessage: (conversationId, messageId) => {
+        set((state) => {
+          const conversation = state.conversations[conversationId];
+          if (conversation) {
+            const message = conversation.messages.find(m => m.id === messageId);
+            if (message) {
+              message.status = 'sending';
+              message.retryCount = (message.retryCount || 0) + 1;
+            }
+          }
+        });
+      },
+      
+      // ChatStore Real-time communication
+      setParticipantTyping: (conversationId, participant, isTyping) => {
+        set((state) => {
+          const conversation = state.conversations[conversationId];
+          if (conversation) {
+            if (!conversation.typingState) {
+              conversation.typingState = {};
+            }
+            
+            const typingKey = `${participant}Typing`;
+            conversation.typingState[typingKey] = isTyping;
+            conversation.typingState.lastTypingUpdate = Date.now();
+          }
+        });
+      },
+      
+      cleanupStaleTypingStates: (timeoutMs) => {
+        set((state) => {
+          const now = Date.now();
+          Object.values(state.conversations).forEach(conversation => {
+            if (conversation.typingState && conversation.typingState.lastTypingUpdate) {
+              if (now - conversation.typingState.lastTypingUpdate >= timeoutMs) {
+                conversation.typingState.patientTyping = false;
+                conversation.typingState.providerTyping = false;
+              }
+            }
+          });
+        });
+      },
+      
+      // ChatStore Session management
+      getSessionData: () => {
+        const state = get();
+        return {
+          conversations: state.conversations,
+          activeConversationId: state.activeConversationId,
+          isTyping: state.isTyping
+        };
+      },
+      
+      restoreSessionData: (sessionData) => {
+        set((state) => {
+          try {
+            if (sessionData && typeof sessionData === 'object' && sessionData.conversations) {
+              if (typeof sessionData.conversations === 'object') {
+                state.conversations = sessionData.conversations;
+              }
+              if (sessionData.activeConversationId !== undefined) {
+                state.activeConversationId = sessionData.activeConversationId;
+              }
+              if (typeof sessionData.isTyping === 'boolean') {
+                state.isTyping = sessionData.isTyping;
+              }
+            }
+          } catch (error) {
+            console.error('セッションデータの復元に失敗:', error);
           }
         });
       },

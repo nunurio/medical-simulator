@@ -18,8 +18,8 @@ describe('PatientPersonaGenerator', () => {
     // LLMServiceのインスタンスをモック
     mockLLMServiceInstance = {
       generateCompletion: vi.fn(),
-    };
-    mockLLMService.getInstance.mockReturnValue(mockLLMServiceInstance);
+    } as any;
+    mockLLMService.getInstance.mockReturnValue(mockLLMServiceInstance as any);
     
     generator = new PatientPersonaGenerator();
   });
@@ -97,10 +97,10 @@ describe('PatientPersonaGenerator', () => {
       // Act & Assert: 無効な年齢でエラーが発生する
       await expect(
         generator.generatePersona({
-          specialty: 'invalid_specialty', // 無効な診療科
+          specialty: 'invalid_specialty' as any, // 無効な診療科
           difficulty: 'intermediate',
           mode: 'outpatient',
-        } as Parameters<typeof generator.generatePersona>[0])
+        })
       ).rejects.toThrow();
     });
 

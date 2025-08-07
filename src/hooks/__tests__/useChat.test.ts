@@ -88,6 +88,11 @@ describe('useChat', () => {
     vi.mocked(sendChatMessageModule.sendChatMessage).mockResolvedValue({
       success: true,
       patientResponse: 'Test patient response',
+      usage: {
+        promptTokens: 100,
+        completionTokens: 50,
+        totalTokens: 150
+      }
     });
   });
 
@@ -297,7 +302,12 @@ describe('useChat', () => {
       const sendChatMessageModule = await import('../../app/actions/send-chat-message');
       vi.mocked(sendChatMessageModule.sendChatMessage).mockResolvedValue({
         success: true,
-        patientResponse: 'Patient response'
+        patientResponse: 'Patient response',
+        usage: {
+          promptTokens: 100,
+          completionTokens: 50,
+          totalTokens: 150
+        }
       });
 
       const { result } = renderHook(() => useChat());

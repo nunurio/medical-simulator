@@ -80,26 +80,53 @@ describe('usePatientGeneration', () => {
     it('患者生成の成功時にストアを更新し、成功通知を表示する', async () => {
       const mockPatientData = {
         id: 'patient-001',
+        scenarioId: 'scenario-001',
         demographics: {
           name: '田中太郎',
           age: 45,
           gender: 'male' as const,
-          dateOfBirth: '1979-01-15' as const
+          dateOfBirth: '1979-01-15'
         },
+        chiefComplaint: '胸痛',
+        presentIllness: '今朝から胸部に圧迫感があります',
         currentConditions: [],
+        medications: [],
+        allergies: [],
         vitalSigns: {
           baseline: {
-            bloodPressure: { systolic: 120, diastolic: 80 },
-            heartRate: 72,
-            temperature: 36.5,
-            respiratoryRate: 16,
-            oxygenSaturation: 98
+            bloodPressure: { systolic: 120, diastolic: 80, unit: 'mmHg' as const },
+            heartRate: { value: 72, unit: 'bpm' as const },
+            temperature: { value: 36.5, unit: 'celsius' as const },
+            respiratoryRate: { value: 16, unit: 'breaths/min' as const },
+            oxygenSaturation: { value: 98, unit: '%' as const },
+            recordedAt: '2024-01-01T10:00:00Z'
+          },
+          trend: 'stable' as const,
+          criticalValues: {
+            isHypotensive: false,
+            isHypertensive: false,
+            isTachycardic: false,
+            isBradycardic: false,
+            isFebrile: false,
+            isHypoxic: false
           }
         },
-        medicalHistory: { allergies: [], medications: [], surgeries: [] },
-        socialHistory: { smokingStatus: 'never', alcoholUse: 'none' },
-        familyHistory: []
-      }
+        medicalHistory: { 
+          surgicalHistory: [], 
+          familyHistory: [], 
+          pastIllnesses: [], 
+          hospitalizations: [] 
+        },
+        socialHistory: { 
+          smoking: { status: 'never' as const, packsPerDay: 0, duration: 0 },
+          alcohol: { frequency: 'none' as const, amount: 0 }
+        },
+        insurance: { 
+          provider: 'National Health Insurance', 
+          policyNumber: 'NHI123456',
+          validUntil: '2025-12-31'
+        }
+      } as any
 
       mockGeneratePatientAction.mockResolvedValue({
         success: true,
@@ -160,7 +187,7 @@ describe('usePatientGeneration', () => {
       const pendingPromise = new Promise((resolve) => {
         resolvePromise = resolve
       })
-      mockGeneratePatientAction.mockReturnValue(pendingPromise)
+      mockGeneratePatientAction.mockReturnValue(pendingPromise as any)
 
       const { result } = renderHook(() => usePatientGeneration())
 
@@ -180,7 +207,7 @@ describe('usePatientGeneration', () => {
       await act(async () => {
         resolvePromise!({
           success: true,
-          data: { id: 'test-patient' }
+          data: { id: 'test-patient' } as any
         })
         await pendingPromise
       })
@@ -231,23 +258,55 @@ describe('usePatientGeneration', () => {
     it('複数回呼び出しても正しく動作する', async () => {
       const mockPatientData1 = {
         id: 'patient-001',
-        demographics: { name: '田中太郎', age: 45, gender: 'male' as const, dateOfBirth: '1979-01-15' as const },
+        scenarioId: 'scenario-001',
+        demographics: { name: '田中太郎', age: 45, gender: 'male' as const, dateOfBirth: '1979-01-15' },
+        chiefComplaint: '胸痛',
+        presentIllness: '今朝から胸部に圧迫感があります',
         currentConditions: [],
-        vitalSigns: { baseline: { bloodPressure: { systolic: 120, diastolic: 80 }, heartRate: 72, temperature: 36.5, respiratoryRate: 16, oxygenSaturation: 98 } },
-        medicalHistory: { allergies: [], medications: [], surgeries: [] },
-        socialHistory: { smokingStatus: 'never', alcoholUse: 'none' },
-        familyHistory: []
-      }
+        medications: [],
+        allergies: [],
+        vitalSigns: { 
+          baseline: { 
+            bloodPressure: { systolic: 120, diastolic: 80, unit: 'mmHg' as const }, 
+            heartRate: { value: 72, unit: 'bpm' as const }, 
+            temperature: { value: 36.5, unit: 'celsius' as const }, 
+            respiratoryRate: { value: 16, unit: 'breaths/min' as const }, 
+            oxygenSaturation: { value: 98, unit: '%' as const },
+            recordedAt: '2024-01-01T10:00:00Z'
+          },
+          trend: 'stable' as const,
+          criticalValues: { isHypotensive: false, isHypertensive: false, isTachycardic: false, isBradycardic: false, isFebrile: false, isHypoxic: false }
+        },
+        medicalHistory: { surgicalHistory: [], familyHistory: [], pastIllnesses: [], hospitalizations: [] },
+        socialHistory: { smoking: { status: 'never' as const, packsPerDay: 0, duration: 0 }, alcohol: { frequency: 'none' as const, amount: 0 } },
+        insurance: { provider: 'National Health Insurance', policyNumber: 'NHI123456', validUntil: '2025-12-31' }
+      } as any
 
       const mockPatientData2 = {
         id: 'patient-002',
-        demographics: { name: '山田花子', age: 32, gender: 'female' as const, dateOfBirth: '1992-06-20' as const },
+        scenarioId: 'scenario-002',
+        demographics: { name: '山田花子', age: 32, gender: 'female' as const, dateOfBirth: '1992-06-20' },
+        chiefComplaint: '頭痛',
+        presentIllness: '昨日から頭痛が続いています',
         currentConditions: [],
-        vitalSigns: { baseline: { bloodPressure: { systolic: 110, diastolic: 70 }, heartRate: 68, temperature: 36.3, respiratoryRate: 14, oxygenSaturation: 99 } },
-        medicalHistory: { allergies: [], medications: [], surgeries: [] },
-        socialHistory: { smokingStatus: 'never', alcoholUse: 'none' },
-        familyHistory: []
-      }
+        medications: [],
+        allergies: [],
+        vitalSigns: { 
+          baseline: { 
+            bloodPressure: { systolic: 110, diastolic: 70, unit: 'mmHg' as const }, 
+            heartRate: { value: 68, unit: 'bpm' as const }, 
+            temperature: { value: 36.3, unit: 'celsius' as const }, 
+            respiratoryRate: { value: 14, unit: 'breaths/min' as const }, 
+            oxygenSaturation: { value: 99, unit: '%' as const },
+            recordedAt: '2024-01-01T10:00:00Z'
+          },
+          trend: 'stable' as const,
+          criticalValues: { isHypotensive: false, isHypertensive: false, isTachycardic: false, isBradycardic: false, isFebrile: false, isHypoxic: false }
+        },
+        medicalHistory: { surgicalHistory: [], familyHistory: [], pastIllnesses: [], hospitalizations: [] },
+        socialHistory: { smoking: { status: 'never' as const, packsPerDay: 0, duration: 0 }, alcohol: { frequency: 'none' as const, amount: 0 } },
+        insurance: { provider: 'National Health Insurance', policyNumber: 'NHI123456', validUntil: '2025-12-31' }
+      } as any
 
       mockGeneratePatientAction
         .mockResolvedValueOnce({ success: true, data: mockPatientData1 })
@@ -305,13 +364,18 @@ describe('usePatientGeneration', () => {
       const mockOnSuccess = vi.fn()
       const mockPatientData = {
         id: 'patient-001',
+        scenarioId: 'scenario-001',
         demographics: {
           name: '田中太郎',
           age: 45,
           gender: 'male' as const,
           dateOfBirth: '1979-01-15' as const
         },
+        chiefComplaint: '胸痛',
+        presentIllness: '今朝から胸部に圧迫感があります',
         currentConditions: [],
+        medications: [],
+        allergies: [],
         vitalSigns: {
           baseline: {
             bloodPressure: { systolic: 120, diastolic: 80 },
@@ -323,8 +387,9 @@ describe('usePatientGeneration', () => {
         },
         medicalHistory: { allergies: [], medications: [], surgeries: [] },
         socialHistory: { smokingStatus: 'never', alcoholUse: 'none' },
-        familyHistory: []
-      }
+        familyHistory: [],
+        insurance: { provider: 'National Health Insurance', membershipNumber: 'NHI123456' }
+      } as any
 
       mockGeneratePatientAction.mockResolvedValue({
         success: true,
@@ -374,13 +439,18 @@ describe('usePatientGeneration', () => {
     it('onSuccessコールバックが未提供でも正常に動作する', async () => {
       const mockPatientData = {
         id: 'patient-001',
+        scenarioId: 'scenario-001',
         demographics: {
           name: '田中太郎',
           age: 45,
           gender: 'male' as const,
           dateOfBirth: '1979-01-15' as const
         },
+        chiefComplaint: '胸痛',
+        presentIllness: '今朝から胸部に圧迫感があります',
         currentConditions: [],
+        medications: [],
+        allergies: [],
         vitalSigns: {
           baseline: {
             bloodPressure: { systolic: 120, diastolic: 80 },
@@ -392,8 +462,9 @@ describe('usePatientGeneration', () => {
         },
         medicalHistory: { allergies: [], medications: [], surgeries: [] },
         socialHistory: { smokingStatus: 'never', alcoholUse: 'none' },
-        familyHistory: []
-      }
+        familyHistory: [],
+        insurance: { provider: 'National Health Insurance', membershipNumber: 'NHI123456' }
+      } as any
 
       mockGeneratePatientAction.mockResolvedValue({
         success: true,

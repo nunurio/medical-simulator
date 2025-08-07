@@ -152,7 +152,7 @@ export const useChatStore = create<ChatStore>()(
       if (conversation) {
         const message = conversation.messages.find(m => m.id === messageId);
         if (message) {
-          message.status = status;
+          message.status = status as 'sending' | 'sent' | 'delivered' | 'failed';
         }
       }
     }),

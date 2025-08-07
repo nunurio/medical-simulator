@@ -1,4 +1,4 @@
-import { useCallback, useRef, useEffect } from 'react';
+import { useCallback, useRef, useEffect, useState } from 'react';
 import { useStore } from './use-store';
 import type { Patient, ChatConversation } from '../types/state';
 import type { EncounterId } from '../types/core';
@@ -10,7 +10,7 @@ export interface UseChatReturn {
   isTyping: boolean;
   activeConversationId: string | null;
   currentPatient: Patient | null;
-  error: string | null;
+  error: { message: string; type: string; retry?: () => void } | null;
   isLoading: boolean;
   
   // Actions
@@ -21,27 +21,25 @@ export interface UseChatReturn {
 }
 
 export function useChat(encounterId?: EncounterId): UseChatReturn {
-  const store = useStore();
-  const { 
-    // Chat store properties
-    conversations,
-    activeConversationId,
-    isTyping,
-    addMessage,
-    sendMessage: storeSendMessage,
-    removeMessage,
-    setTyping,
-    createConversation,
-    setActiveConversation,
-    // Patient store properties
-    patients,
-    activePatientId,
-    // UI store properties
-    error,
-    isLoading,
-    setError,
-    setLoading
-  } = store;
+  // Use selectors to access store state
+  const conversations = useStore(state => state.conversations);
+  const activeConversationId = useStore(state => state.activeConversationId);
+  const isTyping = useStore(state => state.isTyping);
+  const patients = useStore(state => state.patients);
+  const activePatientId = useStore(state => state.activePatientId);
+  
+  // Store actions
+  const addMessage = useStore(state => state.addMessage);
+  const storeSendMessage = useStore(state => state.sendMessage);
+  const removeMessage = useStore(state => state.removeMessage);
+  const setTyping = useStore(state => state.setTyping);
+  const createConversation = useStore(state => state.createConversation);
+  const setActiveConversation = useStore(state => state.setActiveConversation);
+
+  // Local state for error and loading
+  const [error, setError] = useState<{ message: string; type: string; retry?: () => void } | null>(null);
+  const [isLoading, setLoading] = useState(false);
+  
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // encounterIdがある場合は会話を初期化
@@ -78,9 +76,9 @@ export function useChat(encounterId?: EncounterId): UseChatReturn {
     storeSendMessage(activeConversationId, {
       id: optimisticMessageId,
       content,
-      sender: 'provider',
-      timestamp: new Date().toISOString(),
-      type: 'text',
+      messageType: 'simulator',
+      timestamp: new Date().toISOString() as import('../types/core').ISODateTime,
+      encounterId: encounterId!,
       status: 'sending',
     });
 
@@ -101,9 +99,9 @@ export function useChat(encounterId?: EncounterId): UseChatReturn {
         addMessage(activeConversationId, {
           id: `msg-${Date.now()}-patient`,
           content: response.patientResponse,
-          sender: 'patient',
-          timestamp: new Date().toISOString(),
-          type: 'text',
+          messageType: 'patient',
+          timestamp: new Date().toISOString() as import('../types/core').ISODateTime,
+          encounterId: encounterId!,
         });
       }
     } catch (error) {
@@ -123,7 +121,7 @@ export function useChat(encounterId?: EncounterId): UseChatReturn {
     } finally {
       setLoading(false);
     }
-  }, [storeSendMessage, addMessage, removeMessage, activeConversationId, activePatientId, setLoading, setError]);
+  }, [storeSendMessage, addMessage, removeMessage, activeConversationId, activePatientId, encounterId]);
 
   const handleTyping = useCallback(() => {
     setTyping(true);
@@ -141,7 +139,7 @@ export function useChat(encounterId?: EncounterId): UseChatReturn {
 
   const clearError = useCallback(() => {
     setError(null);
-  }, [setError]);
+  }, []);
 
   const retryMessage = useCallback(async (messageId: string) => {
     if (!activeConversationId) {

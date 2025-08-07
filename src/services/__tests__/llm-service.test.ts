@@ -163,6 +163,7 @@ describe('LLMService', () => {
           model: 'o3-mini',
           temperature: 0.7,
           maxTokens: 2000,
+          maxCompletionTokens: 4096,
           retries: {
             maxAttempts: 3,
             initialDelay: 1000,
@@ -222,9 +223,9 @@ describe('LLMService', () => {
             type: 'json_schema',
             json_schema: {
               name: 'PatientPersona',
+              strict: true,
               schema: {
                 type: 'object',
-                strict: true,
                 additionalProperties: false,
                 properties: {
                   id: { type: 'string' },
@@ -239,8 +240,7 @@ describe('LLMService', () => {
                   }
                 },
                 required: ['id', 'demographics']
-              },
-              strict: true
+              }
             }
           }
         };
@@ -270,6 +270,7 @@ describe('LLMService', () => {
           model: 'gpt-4o',
           temperature: 0.7,
           maxTokens: 2000,
+          maxCompletionTokens: 4096,
           retries: {
             maxAttempts: 3,
             initialDelay: 1000,

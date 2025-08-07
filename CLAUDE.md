@@ -10,6 +10,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Working Policy
 
 - All operations to understand the project structure, implementation details, and read files must be performed using Serena MCP.
+- Use the Playwright MCP to verify implementation details, especially for UI-related tasks by taking screenshots.
 
 ## Project Overview
 

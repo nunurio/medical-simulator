@@ -56,7 +56,7 @@ export function ChatInterface({ encounterId, className }: ChatInterfaceProps) {
           エラーが発生しました
         </h3>
         <p className="text-sm text-muted-foreground mb-4">
-          {typeof error === 'string' ? error : error?.message || 'Unknown error occurred'}
+          {error?.message || 'Unknown error occurred'}
         </p>
         <button
           onClick={() => window.location.reload()}

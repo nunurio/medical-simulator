@@ -15,6 +15,9 @@ interface BaseChatMessage {
   readonly id: string;
   readonly timestamp: ISODateTime;
   readonly encounterId: EncounterId;
+  status?: 'sending' | 'sent' | 'delivered' | 'failed';
+  deliveredAt?: string;
+  retryCount?: number;
 }
 
 // Message type discriminators
@@ -110,7 +113,7 @@ export interface ChatConversation {
   readonly endedAt: ISODateTime | null;
   readonly lastActivityAt: ISODateTime;
   readonly messages: ChatMessage[];
-  readonly status: 'active' | 'paused' | 'completed';
+  readonly status: 'active' | 'paused' | 'completed' | 'archived';
   readonly participants: {
     patient: {
       role: 'patient';
@@ -120,5 +123,15 @@ export interface ChatConversation {
       role: 'provider';
       name: string;
     };
+  };
+  context?: {
+    metadata?: any;
+    [key: string]: any;
+  };
+  typingState?: {
+    patientTyping?: boolean;
+    providerTyping?: boolean;
+    lastTypingUpdate?: number;
+    [key: string]: any;
   };
 }

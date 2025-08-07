@@ -24,7 +24,8 @@ describe('ChatResponseGenerator', () => {
     it('should generate chat response with patient persona context', async () => {
       const mockLLMResponse = {
         content: 'I feel dizzy and my head hurts a lot.',
-        usage: { promptTokens: 80, completionTokens: 20, totalTokens: 100 }
+        usage: { promptTokens: 80, completionTokens: 20, totalTokens: 100 },
+        model: 'gpt-4'
       };
 
       vi.mocked(mockLLMService.generateChatResponse).mockResolvedValue(mockLLMResponse);
@@ -73,7 +74,8 @@ describe('ChatResponseGenerator', () => {
 
       vi.mocked(mockLLMService.generateChatResponse).mockResolvedValue({
         content: 'The headache is getting worse.',
-        usage: { promptTokens: 100, completionTokens: 25, totalTokens: 125 }
+        usage: { promptTokens: 100, completionTokens: 25, totalTokens: 125 },
+        model: 'gpt-4'
       });
       vi.mocked(mockValidator.validateResponse).mockResolvedValue({
         isValid: true,
@@ -104,7 +106,8 @@ describe('ChatResponseGenerator', () => {
 
       vi.mocked(mockLLMService.generateChatResponse).mockResolvedValue({
         content: 'Response',
-        usage: { promptTokens: 50, completionTokens: 10, totalTokens: 60 }
+        usage: { promptTokens: 50, completionTokens: 10, totalTokens: 60 },
+        model: 'gpt-4'
       });
       vi.mocked(mockValidator.validateResponse).mockResolvedValue({
         isValid: true,
@@ -126,7 +129,8 @@ describe('ChatResponseGenerator', () => {
     it('should handle validation warnings in response', async () => {
       vi.mocked(mockLLMService.generateChatResponse).mockResolvedValue({
         content: 'I think you should take some aspirin for your headache.',
-        usage: { promptTokens: 60, completionTokens: 15, totalTokens: 75 }
+        usage: { promptTokens: 60, completionTokens: 15, totalTokens: 75 },
+        model: 'gpt-4'
       });
       vi.mocked(mockValidator.validateResponse).mockResolvedValue({
         isValid: true,
@@ -147,7 +151,8 @@ describe('ChatResponseGenerator', () => {
     it('should throw error when validation fails', async () => {
       vi.mocked(mockLLMService.generateChatResponse).mockResolvedValue({
         content: 'Invalid response',
-        usage: { promptTokens: 30, completionTokens: 5, totalTokens: 35 }
+        usage: { promptTokens: 30, completionTokens: 5, totalTokens: 35 },
+        model: 'gpt-4'
       });
       vi.mocked(mockValidator.validateResponse).mockResolvedValue({
         isValid: false,

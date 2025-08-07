@@ -306,7 +306,7 @@ export class PatientPersonaGenerator {
             firstName: validatedResponse.demographics.firstName,
             lastName: validatedResponse.demographics.lastName,
             dateOfBirth: validatedResponse.demographics.dateOfBirth as ISODate,
-            gender: validatedResponse.demographics.gender,
+            gender: validatedResponse.demographics.gender as import('../types/patient').Gender,
             bloodType: validatedResponse.demographics.bloodType as 'A+' | 'A-' | 'B+' | 'B-' | 'AB+' | 'AB-' | 'O+' | 'O-',
           },
           chiefComplaint: validatedResponse.chiefComplaint,
@@ -316,34 +316,35 @@ export class PatientPersonaGenerator {
             familyHistory: [], // TODO: Structured Outputsスキーマに追加時にマッピング
             pastIllnesses: validatedResponse.medicalHistory.conditions.map(c => ({
               condition: c.condition,
-              diagnosisDate: c.diagnosedDate as ISODate,
-              status: c.status as 'active' | 'inactive' | 'chronic' | 'resolved',
-              severity: 'mild' as const,
+              diagnosedDate: c.diagnosedDate as ISODate,
+              status: c.status as 'resolved' | 'ongoing' | 'controlled',
+              treatment: '',
             })),
             hospitalizations: [], // TODO: Structured Outputsスキーマに追加時にマッピング
           },
           currentConditions: validatedResponse.currentConditions.map(c => ({
-            code: '', // TODO: コード化が必要な場合
             name: c.name,
+            icdCode: '', // TODO: コード化が必要な場合
+            diagnosedDate: new Date().toISOString().split('T')[0] as ISODate,
             severity: c.severity as 'mild' | 'moderate' | 'severe',
-            status: c.status as 'active' | 'stable' | 'improving' | 'worsening',
-            onset: new Date().toISOString() as import('../types/core').ISODateTime,
+            isActive: c.status === 'active',
           })),
           medications: validatedResponse.medications.map(m => ({
             name: m.name,
             dosage: parseFloat(m.dosage) || 0,
-            unit: m.dosage.replace(/[0-9.]/g, '') || 'mg',
-            frequency: m.frequency as 'once_daily' | 'twice_daily' | 'three_times_daily' | 'four_times_daily' | 'as_needed',
-            route: m.route as 'oral' | 'intravenous' | 'intramuscular' | 'subcutaneous' | 'topical' | 'inhaled',
+            unit: (m.dosage.replace(/[0-9.]/g, '').trim() || 'mg') as import('../types/patient').MedicationUnit,
+            frequency: m.frequency as import('../types/patient').MedicationFrequency,
+            route: m.route,
             startDate: new Date().toISOString().split('T')[0] as ISODate,
-            prescribedBy: 'Unknown',
-            notes: '',
+            prescribedFor: 'Medical condition',
+            prescribedBy: 'Unknown' as import('../types/core').ProviderId,
           })),
           allergies: validatedResponse.allergies.map(a => ({
             allergen: a.allergen,
-            reaction: a.reaction,
-            severity: a.severity as 'mild' | 'moderate' | 'severe',
-            onset: 'unknown' as const,
+            type: 'drug' as import('../types/patient').AllergyType,
+            reaction: a.reaction as import('../types/patient').AllergyReaction,
+            severity: a.severity as import('../types/patient').AllergySeverity,
+            onsetDate: new Date().toISOString().split('T')[0] as ISODate,
             notes: '',
           })),
           vitalSigns: {
@@ -382,22 +383,16 @@ export class PatientPersonaGenerator {
             }
           },
           socialHistory: {
-            smokingHistory: {
+            smoking: {
               status: validatedResponse.socialHistory.smokingStatus as 'never' | 'former' | 'current',
               packsPerDay: 0,
-              years: 0,
+              yearsSmoking: 0,
             },
-            alcoholHistory: {
-              frequency: validatedResponse.socialHistory.alcoholUse as 'never' | 'occasional' | 'weekly' | 'daily',
-              amount: 0,
-              type: '',
-            },
-            drugHistory: {
-              status: validatedResponse.socialHistory.drugUse as 'never' | 'former' | 'current',
-              substances: [],
+            alcohol: {
+              status: validatedResponse.socialHistory.alcoholUse as 'never' | 'former' | 'occasional' | 'regular',
+              drinksPerWeek: 0,
             },
             occupation: validatedResponse.socialHistory.occupation || '',
-            livingConditions: validatedResponse.socialHistory.livingConditions || '',
           },
           insurance: {
             provider: validatedResponse.insurance.provider,
